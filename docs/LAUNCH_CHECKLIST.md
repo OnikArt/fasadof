@@ -1,0 +1,23 @@
+# Launch checklist
+
+- [ ] Final domain confirmed.
+- [ ] SSL active.
+- [ ] Real phone, email and address added.
+- [ ] VK, Instagram and MAX links added.
+- [ ] Production domain reflected in config, sitemap and robots.
+- [ ] `GEMINI_API_KEY` set server-side.
+- [ ] `MAX_BOT_TOKEN` and `MAX_CHAT_ID` set server-side.
+- [ ] Analytics scripts installed.
+- [ ] Yandex Metrika goal events verified.
+- [ ] VK pixel events verified if used.
+- [ ] Lead persistence connected to database or CRM.
+- [ ] Admin authentication connected.
+- [ ] Privacy policy finalized by owner/legal.
+- [ ] Product prices checked against the latest price list.
+- [ ] Product photos or final brand images optimized.
+- [ ] Responsive check: 320, 360, 375, 390, 430, 768, 1024, 1280, 1440, 1920.
+- [ ] Console has no production errors.
+- [ ] Forms tested end-to-end.
+- [ ] Chat tested with and without Gemini key.
+- [ ] MAX notification tested end-to-end.
+- [ ] Backups and rollback plan prepared.

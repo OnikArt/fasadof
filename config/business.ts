@@ -1,0 +1,25 @@
+export const BUSINESS = {
+  name: "ФасадоФ",
+  workingHours: "ПН-ПТ 09:00-18:00",
+  workingHoursShort: "ПН-ПТ\n09:00-18:00",
+  freeDelivery: "Бесплатная доставка",
+  siteUrl: "https://fasadof.ru",
+  phone: "",
+  email: "",
+  address: "",
+  socials: {
+    vk: "",
+    instagram: "",
+    max: "",
+  },
+  requiredOwnerData: [
+    "телефон",
+    "email",
+    "адрес производства или шоурума",
+    "ссылки VK / Instagram / MAX",
+    "production domain",
+    "ID Яндекс Метрики",
+    "Gemini API key",
+    "MAX bot token и chat id",
+  ],
+} as const;
