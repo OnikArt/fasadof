@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "admin:create": "node scripts/create-admin.mjs"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

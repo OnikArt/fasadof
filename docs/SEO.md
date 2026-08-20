@@ -2,33 +2,53 @@
 
 ## Metadata
 
-Global metadata lives in `app/layout.tsx`. Home metadata is in `app/page.tsx`. Product metadata is generated in `app/catalog/[slug]/page.tsx`.
+Global metadata lives in `app/layout.tsx`.
+
+Product and category metadata is generated in `app/catalog/[slug]/page.tsx`.
+
+## Indexable pages
+
+Core:
+
+- `/`;
+- `/catalog`;
+- `/privacy`.
+
+Category SEO pages:
+
+- `/catalog/emal`;
+- `/catalog/shpon`;
+- `/catalog/massiv`;
+- `/catalog/pvh`;
+- `/catalog/fenix`;
+- `/catalog/stoleshnitsy`.
+
+Product pages remain on catalogue slugs such as `/catalog/enamel` and `/catalog/stone-veneer`.
 
 ## Sitemap and robots
 
 Static files:
 
-- `public/sitemap.xml`
-- `public/robots.txt`
+- `public/sitemap.xml`;
+- `public/robots.txt`.
 
-Update the domain before launch if needed.
+Update them when the final custom domain changes.
 
 ## Structured data
 
 Implemented:
 
-- `Organization` in layout
-- `Product` on product pages
+- `Organization` in layout;
+- `Product` on product pages;
+- `BreadcrumbList` on product/category pages.
 
-Do not add fake reviews or ratings.
+Do not add fake reviews, ratings, dates, geography or production numbers.
 
-## Product SEO
+## Content rules
 
-Product pages use:
+Use human-first copy:
 
-- readable URLs
-- unique titles
-- descriptions from catalogue data
-- product structured data
-
-Keep product descriptions natural and avoid keyword spam.
+- explain material scenarios;
+- keep price data from `data/products.ts`;
+- avoid keyword stuffing;
+- avoid claims that are not in source data.

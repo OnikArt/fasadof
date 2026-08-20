@@ -1,29 +1,33 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { ProductCard } from "@/components/ProductCard";
+import { HeroObject, ProductObject } from "@/components/ProductObject";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SupportChat } from "@/components/SupportChat";
+import { LeadForm } from "@/components/LeadForm";
 import { BUSINESS } from "@/config/business";
 import { faq } from "@/data/faq";
 import { formatPrice, products, type Product } from "@/data/products";
 import { analytics } from "@/features/analytics/analytics";
-import { LeadForm } from "@/components/LeadForm";
-import { SupportChat } from "@/components/SupportChat";
 
-const materialTabs = ["ЭМАЛЬ", "ШПОН", "МАССИВ", "FENIX", "КАМЕНЬ", "ПЭТ", "BETON"] as const;
+const materialTabs = ["Эмаль", "Шпон", "Массив", "ПЭТ", "Fenix", "ПВХ", "Камень", "Столешницы"] as const;
 
-const materialByTab: Record<(typeof materialTabs)[number], Product> = {
-  ЭМАЛЬ: products.find((product) => product.slug === "enamel") ?? products[0],
-  ШПОН: products.find((product) => product.slug === "natural-veneer") ?? products[0],
-  МАССИВ: products.find((product) => product.slug === "solid-wood") ?? products[0],
-  FENIX: products.find((product) => product.slug === "fenix-egger") ?? products[0],
-  КАМЕНЬ: products.find((product) => product.slug === "stone-veneer") ?? products[0],
-  ПЭТ: products.find((product) => product.slug === "pet") ?? products[0],
-  BETON: products.find((product) => product.slug === "art-beton") ?? products[0],
+const materialSlugByTab: Record<(typeof materialTabs)[number], string> = {
+  Эмаль: "enamel",
+  Шпон: "natural-veneer",
+  Массив: "solid-wood",
+  ПЭТ: "pet",
+  Fenix: "fenix-egger",
+  ПВХ: "mdf-pvc",
+  Камень: "stone-veneer",
+  Столешницы: "compact-plates",
 };
 
-const collectionSlugs = ["enamel", "natural-veneer", "solid-wood", "fenix-egger"];
-const featuredSlugs = ["stone-veneer", "compact-plates", "art-beton"];
+const mainMaterials = ["enamel", "natural-veneer", "solid-wood", "pet", "fenix-egger", "mdf-pvc"];
+const featuredCollection = ["stone-veneer", "art-beton", "compact-plates"];
+const catalogPreview = ["lmdf-moonlite", "aluminum-glass", "eva-dsp"];
 
 function pickProducts(slugs: string[]) {
   return slugs
@@ -31,54 +35,12 @@ function pickProducts(slugs: string[]) {
     .filter((product): product is Product => Boolean(product));
 }
 
-export function ObjectVisual({
-  product,
-  large = false,
-  portrait = false,
-}: {
-  product: Product;
-  large?: boolean;
-  portrait?: boolean;
-}) {
-  return (
-    <div className={`object-visual ${product.texture}${large ? " large" : ""}${portrait ? " portrait" : ""}`} aria-label={product.name}>
-      <div className="object-stage">
-        <span className="panel panel-back" />
-        <span className="panel panel-main" />
-        <span className="panel panel-side" />
-        <span className="panel panel-plinth" />
-      </div>
-    </div>
-  );
-}
-
-function ProductShowroomCard({
-  product,
-  className = "",
-}: {
-  product: Product;
-  className?: string;
-}) {
-  return (
-    <article className={`showroom-card ${className}`}>
-      <Link href={`/catalog/${product.slug}`} onClick={() => analytics.track("product_view", { slug: product.slug })}>
-        <ObjectVisual product={product} />
-        <div className="showroom-card-copy">
-          <span>{product.material}</span>
-          <h3>{product.name}</h3>
-          <strong>{formatPrice(product)} <span aria-hidden="true">→</span></strong>
-        </div>
-      </Link>
-    </article>
-  );
-}
-
 export function HomeExperience() {
-  const [activeMaterial, setActiveMaterial] = useState<(typeof materialTabs)[number]>("ЭМАЛЬ");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const activeProduct = materialByTab[activeMaterial];
-  const collectionProducts = useMemo(() => pickProducts(collectionSlugs), []);
-  const featuredProducts = useMemo(() => pickProducts(featuredSlugs), []);
+  const [activeMaterial, setActiveMaterial] = useState<(typeof materialTabs)[number]>("Эмаль");
+  const activeProduct = products.find((product) => product.slug === materialSlugByTab[activeMaterial]) ?? products[0];
+  const mainMaterialProducts = useMemo(() => pickProducts(mainMaterials), []);
+  const featuredProducts = useMemo(() => pickProducts(featuredCollection), []);
+  const previewProducts = useMemo(() => pickProducts(catalogPreview), []);
 
   useEffect(() => {
     analytics.track("page_view", { page: "/" });
@@ -86,91 +48,98 @@ export function HomeExperience() {
 
   return (
     <>
-      <header className="site-header showroom-header">
-        <Link className="brand" href="#top">ФасадоФ</Link>
-        <button className="menu-button" type="button" onClick={() => setMenuOpen((current) => !current)}>
-          {menuOpen ? "Закрыть" : "Меню"}
-        </button>
-        <nav className={menuOpen ? "open" : ""} aria-label="Основная навигация">
-          <a href="#materials">Материалы</a>
-          <Link href="/catalog" onClick={() => analytics.track("catalog_open")}>Каталог</Link>
-          <a href="#intro">О нас</a>
-          <a href="#delivery">Доставка</a>
-          <a className="nav-cta" href="#order">Рассчитать</a>
-        </nav>
-      </header>
-
+      <SiteHeader />
       <main id="top">
-        <section className="hero showroom-hero" aria-labelledby="hero-title">
-          <div className="hero-word" aria-hidden="true">ФАСАДОФ</div>
-          <div className="hero-scene">
-            <Image
-              src="/og.png"
-              alt="Центральная тумба из фасадов, панелей и материалов ФасадоФ"
-              width={1792}
-              height={1024}
-              priority
-              sizes="100vw"
-            />
-          </div>
-          <div className="hero-note hero-note-left">
-            <span>Мебельные фасады</span>
-            <span>и столешницы</span>
-          </div>
-          <div className="hero-note hero-note-right">
-            <strong>{BUSINESS.freeDelivery}</strong>
-            <span>Пн-Пт / 09:00-18:00</span>
-          </div>
-          <div className="hero-copy">
-            <p id="hero-title">Фасады и столешницы для современного интерьера.</p>
-            <a className="btn primary" href="#order" onClick={() => analytics.track("cta_click", { place: "hero", action: "lead" })}>
-              Рассчитать проект →
-            </a>
-          </div>
-          <a className="circle-cta" href="#materials" onClick={() => analytics.track("cta_click", { place: "hero", action: "materials" })}>
-            <span>Смотреть материалы</span>
-            <b>→</b>
-          </a>
-        </section>
-
-        <section className="intro section" id="intro">
-          <div className="intro-copy">
-            <h1>Материал, который определяет интерьер.</h1>
-            <p>
-              Фасад работает как предмет: поверхность, edge, свет, объём. От эмали до натурального шпона — под конкретный проект.
-            </p>
-          </div>
-          <div className="intro-visuals">
-            <article className="image-card image-card-wide">
-              <ObjectVisual product={products.find((product) => product.slug === "solid-wood") ?? products[0]} large />
-              <span>Walnut module</span>
-            </article>
-            <article className="image-card">
-              <ObjectVisual product={products.find((product) => product.slug === "enamel") ?? products[0]} portrait />
-              <span>Lacquer detail</span>
-            </article>
+        <section className="hero-section">
+          <div className="page-shell hero-grid">
+            <div className="hero-brand" aria-hidden="true">ФАСАДОФ</div>
+            <div className="hero-visual">
+              <HeroObject />
+            </div>
+            <div className="hero-copy">
+              <p className="eyebrow">Мебельные фасады и столешницы</p>
+              <h1>Материалы, которые собирают интерьер вокруг себя.</h1>
+              <p>Эмаль, шпон, массив, ПЭТ, Fenix, ПВХ, камень и столешницы для мебели на заказ.</p>
+              <div className="hero-actions">
+                <a className="btn primary" href="#order" onClick={() => analytics.track("cta_click", { place: "hero", action: "lead" })}>
+                  Рассчитать проект
+                </a>
+                <Link className="btn ghost" href="/catalog" onClick={() => analytics.track("catalog_open")}>Открыть каталог</Link>
+              </div>
+            </div>
+            <div className="hero-facts" aria-label="Условия">
+              <span>{BUSINESS.freeDelivery}</span>
+              <span>{BUSINESS.workingHoursShort}</span>
+            </div>
           </div>
         </section>
 
-        <section className="collection section" aria-labelledby="collection-title">
-          <div className="quiet-head">
-            <p className="eyebrow">Материалы</p>
-            <h2 id="collection-title">Ключевая коллекция</h2>
-            <Link href="/catalog">Смотреть весь каталог →</Link>
+        <section className="section category-section" aria-labelledby="category-title">
+          <div className="section-grid">
+            <div className="section-kicker">01 / Категории</div>
+            <div className="section-heading">
+              <h2 id="category-title">Сразу понятно, что можно заказать.</h2>
+              <p>Категории ведут в каталог и работают как витрина материалов, а не как текстовый список ссылок.</p>
+            </div>
           </div>
-          <div className="collection-grid">
-            {collectionProducts.map((product, index) => (
-              <ProductShowroomCard product={product} className={index === 0 ? "wide" : ""} key={product.id} />
+          <div className="category-grid">
+            {materialTabs.map((material) => {
+              const product = products.find((item) => item.slug === materialSlugByTab[material]) ?? products[0];
+              return (
+                <Link className="category-card" href={`/catalog/${product.slug}`} key={material}>
+                  <ProductObject product={product} size="compact" />
+                  <span>{material}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="section" id="materials" aria-labelledby="materials-title">
+          <div className="section-grid">
+            <div className="section-kicker">02 / Материалы</div>
+            <div className="section-heading">
+              <h2 id="materials-title">Основные фасадные решения</h2>
+              <p>На главной только ключевые материалы. Полный ассортимент и цены остаются в каталоге.</p>
+            </div>
+            <Link className="section-link" href="/catalog">Весь каталог</Link>
+          </div>
+          <div className="product-grid">
+            {mainMaterialProducts.map((product, index) => (
+              <ProductCard
+                featured={index === 0}
+                key={product.id}
+                product={product}
+                onClick={() => analytics.track("product_view", { slug: product.slug })}
+              />
             ))}
           </div>
         </section>
 
-        <section className="material-explorer section" id="materials" aria-labelledby="materials-title">
-          <div className="quiet-head">
-            <p className="eyebrow">Configurator</p>
-            <h2 id="materials-title">Поверхность крупным планом</h2>
+        <section className="section featured-section" aria-labelledby="featured-title">
+          <div className="section-grid">
+            <div className="section-kicker">03 / Featured</div>
+            <div className="section-heading">
+              <h2 id="featured-title">Глубина, камень, архитектурная плоскость.</h2>
+              <p>Более выразительные материалы вынесены в тёмную showroom-сцену.</p>
+            </div>
           </div>
-          <div className="configurator">
+          <div className="featured-grid">
+            {featuredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} onClick={() => analytics.track("product_view", { slug: product.slug })} />
+            ))}
+          </div>
+        </section>
+
+        <section className="section explorer-section" aria-labelledby="explorer-title">
+          <div className="section-grid">
+            <div className="section-kicker">04 / Explorer</div>
+            <div className="section-heading">
+              <h2 id="explorer-title">Материал крупно, без шума.</h2>
+              <p>Выбор меняет центральный объект, цену и описание. Это быстрый путь к первому решению.</p>
+            </div>
+          </div>
+          <div className="material-explorer">
             <div className="material-tabs" role="tablist" aria-label="Материалы">
               {materialTabs.map((material) => (
                 <button
@@ -186,73 +155,101 @@ export function HomeExperience() {
                 </button>
               ))}
             </div>
-            <ObjectVisual product={activeProduct} large portrait />
-            <div className="material-info">
-              <span>{activeProduct.material}</span>
+            <div className="explorer-visual">
+              <ProductObject product={activeProduct} size="large" variant="stack" />
+            </div>
+            <div className="explorer-copy">
+              <p className="eyebrow">{activeProduct.material}</p>
               <h3>{activeProduct.name}</h3>
               <p>{activeProduct.description}</p>
               <strong>{formatPrice(activeProduct)}</strong>
-              <Link className="btn secondary" href={`/catalog/${activeProduct.slug}`}>Подробнее →</Link>
+              <Link className="btn secondary" href={`/catalog/${activeProduct.slug}`}>Подробнее</Link>
             </div>
           </div>
         </section>
 
-        <section className="featured-dark section" aria-labelledby="featured-title">
-          <div className="quiet-head dark">
-            <p className="eyebrow">Коллекция ФасадоФ</p>
-            <h2 id="featured-title">Глубина, камень, тишина.</h2>
+        <section className="section production-section" id="production" aria-labelledby="production-title">
+          <div className="section-grid">
+            <div className="section-kicker">05 / Производство</div>
+            <div className="section-heading">
+              <h2 id="production-title">Производственная логика без выдуманных цифр.</h2>
+              <p>Показываем только то, что уже есть в данных и услугах: фасады, столешницы, подбор материала, расчёт и индивидуальные решения.</p>
+            </div>
           </div>
-          <div className="featured-grid">
-            {featuredProducts.map((product) => (
-              <ProductShowroomCard product={product} key={product.id} />
+          <div className="capability-grid">
+            {["Изготовление фасадов", "Подбор материала", "Расчет", "Индивидуальные решения", "Столешницы", "Доставка"].map((item, index) => (
+              <article className="capability-card" key={item}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <h3>{item}</h3>
+              </article>
             ))}
           </div>
         </section>
 
-        <section className="gallery section" aria-labelledby="gallery-title">
-          <div className="quiet-head">
-            <p className="eyebrow">Inspiration</p>
-            <h2 id="gallery-title">Материал в интерьере</h2>
+        <section className="section inspiration-section" aria-labelledby="inspiration-title">
+          <div className="section-grid">
+            <div className="section-kicker">06 / Проекты</div>
+            <div className="section-heading">
+              <h2 id="inspiration-title">Фасад как предмет в комнате.</h2>
+              <p>Временная визуальная система показывает сценарии: тёплая древесина, тёмная плоскость, каменный edge, стеклянный модуль.</p>
+            </div>
           </div>
-          <div className="masonry-gallery">
-            <article className="gallery-tile large"><ObjectVisual product={products.find((product) => product.slug === "stone-veneer") ?? products[0]} large /><span>Stone edge</span></article>
-            <article className="gallery-tile"><ObjectVisual product={products.find((product) => product.slug === "fenix-egger") ?? products[0]} /><span>Dark plane</span></article>
-            <article className="gallery-tile wide"><ObjectVisual product={products.find((product) => product.slug === "natural-veneer") ?? products[0]} /><span>Veneer line</span></article>
-            <article className="gallery-tile portrait"><ObjectVisual product={products.find((product) => product.slug === "aluminum-glass") ?? products[0]} portrait /><span>Glass module</span></article>
+          <div className="inspiration-grid">
+            <article className="inspiration-card large">
+              <ProductObject product={products.find((product) => product.slug === "natural-veneer") ?? products[0]} size="large" />
+              <span>Шпон в спокойной кухне</span>
+            </article>
+            <article className="inspiration-card">
+              <ProductObject product={products.find((product) => product.slug === "fenix-egger") ?? products[0]} />
+              <span>Тёмный Fenix</span>
+            </article>
+            <article className="inspiration-card">
+              <ProductObject product={products.find((product) => product.slug === "aluminum-glass") ?? products[0]} />
+              <span>Стекло и профиль</span>
+            </article>
           </div>
         </section>
 
-        <section className="delivery section" id="delivery">
-          <span>Доставка —</span>
-          <strong>бесплатно.</strong>
-        </section>
-
-        <section className="process section" aria-labelledby="process-title">
-          <div className="quiet-head">
-            <p className="eyebrow">Процесс</p>
-            <h2 id="process-title">Спокойный путь к расчёту</h2>
+        <section className="section catalog-preview" aria-labelledby="catalog-preview-title">
+          <div className="section-grid">
+            <div className="section-kicker">07 / Каталог</div>
+            <div className="section-heading">
+              <h2 id="catalog-preview-title">Ещё несколько материалов</h2>
+              <p>Остальное не перегружает главную и доступно на отдельной странице каталога.</p>
+            </div>
+            <Link className="section-link" href="/catalog">Перейти в каталог</Link>
           </div>
-          <ol>
-            <li><span>01</span><strong>Выберите материал</strong><p>Или напишите «не знаю».</p></li>
-            <li><span>02</span><strong>Отправьте размеры</strong><p>Площадь или комментарий.</p></li>
-            <li><span>03</span><strong>Получите расчёт</strong><p>Менеджер уточнит детали.</p></li>
-            <li><span>04</span><strong>Запустим производство</strong><p>Под конкретный проект.</p></li>
-          </ol>
+          <div className="product-grid compact">
+            {previewProducts.map((product) => (
+              <ProductCard key={product.id} product={product} onClick={() => analytics.track("product_view", { slug: product.slug })} />
+            ))}
+          </div>
         </section>
 
-        <section className="order section" id="order" aria-labelledby="order-title">
-          <div className="order-heading">
-            <p className="eyebrow">Calculator</p>
-            <h2 id="order-title">Рассчитать проект</h2>
-            <p>Заявка передаёт UTM, first-touch, last-touch и страницу обращения.</p>
+        <section className="delivery-section" id="delivery">
+          <div className="page-shell">
+            <span>Доставка —</span>
+            <strong>бесплатно.</strong>
+          </div>
+        </section>
+
+        <section className="section order-section" id="order" aria-labelledby="order-title">
+          <div className="section-grid">
+            <div className="section-kicker">08 / Расчет</div>
+            <div className="section-heading">
+              <h2 id="order-title">Короткая заявка без лишних полей.</h2>
+              <p>Форма передаёт UTM, first-touch, last-touch, страницу обращения и выбранный материал.</p>
+            </div>
           </div>
           <LeadForm />
         </section>
 
-        <section className="faq section" aria-labelledby="faq-title">
-          <div className="quiet-head">
-            <p className="eyebrow">FAQ</p>
-            <h2 id="faq-title">Коротко</h2>
+        <section className="section faq-section" aria-labelledby="faq-title">
+          <div className="section-grid">
+            <div className="section-kicker">09 / FAQ</div>
+            <div className="section-heading">
+              <h2 id="faq-title">Короткие ответы</h2>
+            </div>
           </div>
           <div className="faq-list">
             {faq.map((item) => (
@@ -264,24 +261,29 @@ export function HomeExperience() {
           </div>
         </section>
 
-        <section className="contacts section" id="contacts" aria-labelledby="contacts-title">
-          <article className="contact-card">
-            <p className="eyebrow">Contacts</p>
-            <h2 id="contacts-title">Контакты</h2>
-            <p>Телефон, email и адрес ждут реальные данные владельца бизнеса.</p>
-          </article>
-          <article className="contact-card pink">
-            <strong>{BUSINESS.freeDelivery}</strong>
-            <span>{BUSINESS.workingHours}</span>
-            <p>Без вымышленных условий и мелкого шрифта.</p>
-          </article>
+        <section className="section contacts-section" id="contacts" aria-labelledby="contacts-title">
+          <div className="contact-grid">
+            <article className="contact-panel">
+              <p className="eyebrow">Контакты</p>
+              <h2 id="contacts-title">Связаться с ФасадоФ</h2>
+              <p>Телефон, email и адрес нужно заменить на финальные данные владельца бизнеса.</p>
+            </article>
+            <article className="contact-panel pink">
+              <strong>{BUSINESS.freeDelivery}</strong>
+              <span>{BUSINESS.workingHoursShort}</span>
+              <p>Менеджеры отвечают в рабочее время. AI-помощник доступен онлайн.</p>
+            </article>
+          </div>
         </section>
       </main>
 
       <footer className="site-footer">
-        <span>ФасадоФ</span>
-        <Link href="/privacy">Политика и согласие</Link>
-        <Link href="/admin/support">Support admin</Link>
+        <div className="page-shell footer-grid">
+          <span>ФАСАДОФ</span>
+          <Link href="/privacy">Политика и согласие</Link>
+          <Link href="/admin/login">Вход менеджера</Link>
+          <Link href="/admin/support">Support admin</Link>
+        </div>
       </footer>
 
       <SupportChat />

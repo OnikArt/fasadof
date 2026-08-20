@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { BUSINESS } from "@/config/business";
 import "./globals.css";
 
@@ -14,8 +14,8 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "ФасадоФ - материал, цвет, характер",
-    description: "Премиальные мебельные фасады и столешницы на заказ. Бесплатная доставка. ПН-ПТ 09:00-18:00.",
+    title: "ФасадоФ - premium showroom фасадов и столешниц",
+    description: "Мебельные фасады и столешницы на заказ. Бесплатная доставка. ПН–ПТ 09:00–18:00.",
     url: "/",
     siteName: "ФасадоФ",
     locale: "ru_RU",
@@ -32,13 +32,18 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "ФасадоФ - мебельные фасады и столешницы",
-    description: "Bold editorial furniture brand: фасады, столешницы, материалы и расчет заявки.",
+    description: "Premium showroom: фасады, столешницы, материалы и расчет проекта.",
     images: ["/og.png"],
   },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

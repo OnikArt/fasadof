@@ -1,5 +1,6 @@
 import { notifyMax } from "@/server/max";
 import { validateLead, type LeadPayload } from "@/server/leads";
+import { persistLead } from "@/server/lead-store";
 
 type ServerEnv = {
   MAX_BOT_TOKEN?: string;
@@ -23,6 +24,7 @@ export async function POST(request: Request) {
     }
 
     const lead = payload as LeadPayload;
+    const persisted = await persistLead(lead);
     const max = await notifyMax(
       {
         name: lead.name,
@@ -41,9 +43,9 @@ export async function POST(request: Request) {
       {
         ok: true,
         integration: {
-          persisted: false,
+          persisted: persisted.persisted,
           max,
-          note: "Подключите D1/Postgres/CRM для постоянного хранения заявок.",
+          note: persisted.persisted ? "Заявка сохранена." : "D1 недоступен: заявка обработана без постоянного хранения.",
         },
       },
       { status: 201 },

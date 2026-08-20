@@ -2,64 +2,80 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LeadForm } from "@/components/LeadForm";
+import { ProductCard } from "@/components/ProductCard";
+import { ProductObject } from "@/components/ProductObject";
+import { SiteHeader } from "@/components/SiteHeader";
 import { BUSINESS } from "@/config/business";
+import { getCategoryPage, getCategoryProducts, categoryPages } from "@/data/categoryPages";
 import { formatPrice, getProduct, productCategories, products } from "@/data/products";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-function ProductObject({ texture, name, large = false }: { texture: string; name: string; large?: boolean }) {
-  return (
-    <div className={`object-visual ${texture}${large ? " large" : ""}`} aria-label={name}>
-      <div className="object-stage">
-        <span className="panel panel-back" />
-        <span className="panel panel-main" />
-        <span className="panel panel-side" />
-        <span className="panel panel-plinth" />
-      </div>
-    </div>
-  );
-}
-
 export async function generateStaticParams() {
-  return products.map((product) => ({ slug: product.slug }));
+  return [
+    ...products.map((product) => ({ slug: product.slug })),
+    ...categoryPages.map((category) => ({ slug: category.slug })),
+  ];
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const product = getProduct(slug);
+  const category = getCategoryPage(slug);
 
-  if (!product) {
+  if (product) {
     return {
-      title: "Материал не найден",
+      title: `${product.name} - ${formatPrice(product)}`,
+      description: product.description,
+      alternates: {
+        canonical: `/catalog/${product.slug}`,
+      },
+      openGraph: {
+        title: `${product.name} - ФасадоФ`,
+        description: product.description,
+        images: ["/og.png"],
+        type: "website",
+      },
+    };
+  }
+
+  if (category) {
+    return {
+      title: category.title,
+      description: category.description,
+      alternates: {
+        canonical: `/catalog/${category.slug}`,
+      },
+      openGraph: {
+        title: `${category.title} - ФасадоФ`,
+        description: category.description,
+        images: ["/og.png"],
+        type: "website",
+      },
     };
   }
 
   return {
-    title: `${product.name} - ${formatPrice(product)}`,
-    description: product.description,
-    alternates: {
-      canonical: `/catalog/${product.slug}`,
-    },
-    openGraph: {
-      title: `${product.name} - ФасадоФ`,
-      description: product.description,
-      images: ["/og.png"],
-      type: "website",
-    },
+    title: "Материал не найден",
   };
 }
 
-export default async function ProductPage({ params }: PageProps) {
+export default async function ProductOrCategoryPage({ params }: PageProps) {
   const { slug } = await params;
   const product = getProduct(slug);
 
-  if (!product) notFound();
+  if (!product) {
+    const category = getCategoryPage(slug);
+    if (!category) notFound();
+    return <CategoryLanding slug={slug} />;
+  }
 
   const related = products
     .filter((item) => item.category === product.category && item.slug !== product.slug)
     .slice(0, 3);
+
   const productSchema = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -80,16 +96,38 @@ export default async function ProductPage({ params }: PageProps) {
       : undefined,
   };
 
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Главная", item: "/" },
+      { "@type": "ListItem", position: 2, name: "Каталог", item: "/catalog" },
+      { "@type": "ListItem", position: 3, name: product.name, item: `/catalog/${product.slug}` },
+    ],
+  };
+
   return (
     <>
-      <main className="product-page">
-        <Link className="back-link" href="/catalog">Каталог</Link>
-
-        <section className="product-hero section">
-          <div>
-            <ProductObject texture={product.texture} name={product.name} large />
+      <SiteHeader />
+      <main className="product-page page-main">
+        <section className="section product-detail-hero">
+          <div className="product-gallery">
+            <div className="product-gallery-main">
+              <ProductObject product={product} size="large" variant="stack" />
+            </div>
+            <div className="product-gallery-thumbs" aria-label="Варианты просмотра материала">
+              <ProductObject product={product} size="compact" />
+              <ProductObject product={product} size="compact" variant="slab" />
+              <ProductObject product={product} size="compact" variant="stack" />
+            </div>
           </div>
-          <div className="product-detail">
+
+          <aside className="product-info">
+            <nav className="breadcrumbs" aria-label="Хлебные крошки">
+              <Link href="/">Главная</Link>
+              <span>/</span>
+              <Link href="/catalog">Каталог</Link>
+            </nav>
             <p className="eyebrow">{productCategories[product.category]} / {product.material}</p>
             <h1>{product.name}</h1>
             <strong>{formatPrice(product)}</strong>
@@ -101,71 +139,97 @@ export default async function ProductPage({ params }: PageProps) {
                 ))}
               </ul>
             )}
-            {product.application && (
-              <p><b>Применение:</b> {product.application}</p>
-            )}
+            {product.application && <p><b>Применение:</b> {product.application}</p>}
             <a className="btn primary" href="#product-order">Рассчитать материал</a>
+          </aside>
+        </section>
+
+        <section className="section production-section" aria-labelledby="material-use-title">
+          <div className="section-grid">
+            <div className="section-kicker">Материал в задаче</div>
+            <div className="section-heading">
+              <h2 id="material-use-title">Смотрим не образец, а мебельный сценарий.</h2>
+              <p>На расчете важны площадь, торцы, профиль, соседние материалы и то, как фасад будет работать в комнате.</p>
+            </div>
+          </div>
+          <div className="capability-grid">
+            <article className="capability-card"><span>01</span><h3>Большая плоскость</h3></article>
+            <article className="capability-card"><span>02</span><h3>Торец и профиль</h3></article>
+            <article className="capability-card"><span>03</span><h3>Соседние материалы</h3></article>
           </div>
         </section>
 
-        <section className="section product-gallery" aria-labelledby="gallery-title">
-          <div className="section-head">
-            <p className="eyebrow">Фактура в проекте</p>
-            <h2 id="gallery-title">Материал крупно, в торце и в модуле</h2>
-          </div>
-          <div className="project-grid">
-            <article>
-              <ProductObject texture={product.texture} name={`${product.name}: большая плоскость`} />
-              <span>01</span>
-              <p>Большая плоскость показывает цвет и геометрию фасада.</p>
-            </article>
-            <article>
-              <ProductObject texture={product.texture} name={`${product.name}: торец`} />
-              <span>02</span>
-              <p>Торец и профиль согласуются на этапе расчета.</p>
-            </article>
-            <article>
-              <ProductObject texture={product.texture} name={`${product.name}: мебельный модуль`} />
-              <span>03</span>
-              <p>Материал подбирается под мебельную задачу, а не под витрину.</p>
-            </article>
-          </div>
-        </section>
-
-        <section className="order section" id="product-order" aria-labelledby="product-order-title">
-          <div>
-            <p className="eyebrow">Заявка</p>
-            <h2 id="product-order-title">Расчет материала</h2>
-            <p>Форма передаст выбранный материал, страницу и attribution в server-side API.</p>
+        <section className="section order-section" id="product-order" aria-labelledby="product-order-title">
+          <div className="section-grid">
+            <div className="section-kicker">Расчет</div>
+            <div className="section-heading">
+              <h2 id="product-order-title">Расчет материала</h2>
+              <p>Форма передаст выбранный материал, страницу и attribution в server-side API.</p>
+            </div>
           </div>
           <LeadForm product={product.name} />
         </section>
 
         {related.length > 0 && (
           <section className="section" aria-labelledby="related-title">
-            <div className="section-head">
-              <p className="eyebrow">Рядом по коллекции</p>
-              <h2 id="related-title">Похожие материалы</h2>
+            <div className="section-grid">
+              <div className="section-kicker">Похожие</div>
+              <div className="section-heading">
+                <h2 id="related-title">Рядом по коллекции</h2>
+              </div>
             </div>
-            <div className="catalog-grid">
+            <div className="product-grid compact">
               {related.map((item) => (
-                <article className="showroom-card catalog-card" key={item.id}>
-                  <Link href={`/catalog/${item.slug}`}>
-                    <ProductObject texture={item.texture} name={item.name} />
-                    <div>
-                      <span>{productCategories[item.category]}</span>
-                      <h3>{item.name}</h3>
-                      <p>{item.description}</p>
-                      <strong>{formatPrice(item)}</strong>
-                    </div>
-                  </Link>
-                </article>
+                <ProductCard key={item.id} product={item} />
               ))}
             </div>
           </section>
         )}
       </main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+    </>
+  );
+}
+
+function CategoryLanding({ slug }: { slug: string }) {
+  const category = getCategoryPage(slug);
+  if (!category) notFound();
+
+  const categoryProducts = getCategoryProducts(category);
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Главная", item: "/" },
+      { "@type": "ListItem", position: 2, name: "Каталог", item: "/catalog" },
+      { "@type": "ListItem", position: 3, name: category.title, item: `/catalog/${category.slug}` },
+    ],
+  };
+
+  return (
+    <>
+      <SiteHeader />
+      <main className="catalog-page page-main">
+        <section className="section catalog-intro">
+          <div className="section-grid">
+            <div className="section-kicker">Категория</div>
+            <div className="section-heading">
+              <h1>{category.title}</h1>
+              <p>{category.intro}</p>
+            </div>
+            <Link className="section-link" href="/catalog">Весь каталог</Link>
+          </div>
+        </section>
+        <section className="section">
+          <div className="product-grid">
+            {categoryProducts.map((item) => (
+              <ProductCard key={item.id} product={item} />
+            ))}
+          </div>
+        </section>
+      </main>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
     </>
   );
 }

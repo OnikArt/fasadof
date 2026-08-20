@@ -1,9 +1,9 @@
 export const BUSINESS = {
   name: "ФасадоФ",
-  workingHours: "ПН-ПТ 09:00-18:00",
-  workingHoursShort: "ПН-ПТ\n09:00-18:00",
+  workingHours: "ПН–ПТ 09:00–18:00",
+  workingHoursShort: "ПН–ПТ\n09:00–18:00",
   freeDelivery: "Бесплатная доставка",
-  siteUrl: "https://fasadof.ru",
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://fasadof.dwayneclifford50004.chatgpt.site",
   phone: "",
   email: "",
   address: "",
@@ -19,7 +19,7 @@ export const BUSINESS = {
     "ссылки VK / Instagram / MAX",
     "production domain",
     "ID Яндекс Метрики",
-    "Gemini API key",
+    "GigaChat auth key",
     "MAX bot token и chat id",
   ],
 } as const;

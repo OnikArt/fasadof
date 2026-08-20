@@ -2,54 +2,64 @@
 
 ## Attribution
 
-`features/attribution/attribution.ts` captures first-touch and last-touch data:
+`features/attribution/attribution.ts` сохраняет:
 
-- `utm_source`
-- `utm_medium`
-- `utm_campaign`
-- `utm_content`
-- `utm_term`
-- `referrer`
-- `landing_page`
+- `utm_source`;
+- `utm_medium`;
+- `utm_campaign`;
+- `utm_content`;
+- `utm_term`;
+- `landing_page`;
+- `referrer`;
+- `first_touch`;
+- `last_touch`.
 
-Example:
+Attribution передаётся в:
+
+- заявки `/api/leads`;
+- чат `/api/chat`;
+- события `lead_submit`, `chat_message`, `operator_requested`.
+
+## UTM examples
 
 ```text
-?utm_source=vk&utm_medium=social&utm_campaign=facades
+VK:        ?utm_source=vk&utm_medium=social&utm_campaign=facades
+Instagram: ?utm_source=instagram&utm_medium=social&utm_campaign=showroom
+MAX:       ?utm_source=max&utm_medium=messenger&utm_campaign=delivery
+Yandex:    ?utm_source=yandex&utm_medium=cpc&utm_campaign=emal
+Google:    ?utm_source=google&utm_medium=cpc&utm_campaign=countertops
 ```
 
 ## Events
 
-The analytics layer is centralized in `features/analytics/analytics.ts`.
+Центральный слой: `features/analytics/analytics.ts`.
 
-Events:
+Основные события:
 
-- `page_view`
-- `cta_click`
-- `catalog_open`
-- `product_view`
-- `lead_start`
-- `lead_submit`
-- `chat_open`
-- `chat_message`
-- `operator_requested`
-- `phone_click`
-- `max_click`
+- `page_view`;
+- `cta_click`;
+- `catalog_open`;
+- `product_view`;
+- `lead_start`;
+- `lead_submit`;
+- `chat_open`;
+- `chat_message`;
+- `operator_requested`;
+- `phone_click`;
+- `max_click`.
 
 ## Yandex Metrika
-
-Set:
 
 ```env
 NEXT_PUBLIC_YANDEX_METRIKA_ID=
 ```
 
-Then add the actual Metrika script in the layout or tag manager. The existing abstraction will call `ym(counterId, "reachGoal", event, payload)` when `window.ym` exists.
+После добавления счетчика abstraction отправляет reachGoal через `window.ym`, если скрипт Метрики загружен.
 
 ## VK Pixel
 
-Add VK pixel script through the layout or tag manager. The layer calls `window.VK.Retargeting.Event`.
+```env
+NEXT_PUBLIC_VK_PIXEL_ID=
+```
 
-## Social links
-
-VK, Instagram and MAX links are stored in `config/business.ts`. Add UTM parameters to campaign links before publishing.
+Скрипт пикселя можно подключить через layout или tag manager.
