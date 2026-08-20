@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ProductCard } from "@/components/ProductCard";
 import { HeroObject, ProductObject } from "@/components/ProductObject";
+import { SectionHeader } from "@/components/SectionHeader";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SupportChat } from "@/components/SupportChat";
 import { LeadForm } from "@/components/LeadForm";
@@ -64,7 +64,7 @@ export function HomeExperience() {
                 <a className="btn primary" href="#order" onClick={() => analytics.track("cta_click", { place: "hero", action: "lead" })}>
                   Рассчитать проект
                 </a>
-                <Link className="btn ghost" href="/catalog" onClick={() => analytics.track("catalog_open")}>Открыть каталог</Link>
+                <a className="btn ghost" href="/catalog" onClick={() => analytics.track("catalog_open")}>Открыть каталог</a>
               </div>
             </div>
             <div className="hero-facts" aria-label="Условия">
@@ -75,35 +75,33 @@ export function HomeExperience() {
         </section>
 
         <section className="section category-section" aria-labelledby="category-title">
-          <div className="section-grid">
-            <div className="section-kicker">01 / Категории</div>
-            <div className="section-heading">
-              <h2 id="category-title">Сразу понятно, что можно заказать.</h2>
-              <p>Категории ведут в каталог и работают как витрина материалов, а не как текстовый список ссылок.</p>
-            </div>
-          </div>
+          <SectionHeader
+            eyebrow="01 / Категории"
+            id="category-title"
+            title="Сразу понятно, что можно заказать."
+            description="Категории ведут в каталог и работают как витрина материалов, а не как текстовый список ссылок."
+          />
           <div className="category-grid">
             {materialTabs.map((material) => {
               const product = products.find((item) => item.slug === materialSlugByTab[material]) ?? products[0];
               return (
-                <Link className="category-card" href={`/catalog/${product.slug}`} key={material}>
+                <a className="category-card" href={`/catalog/${product.slug}`} key={material}>
                   <ProductObject product={product} size="compact" />
                   <span>{material}</span>
-                </Link>
+                </a>
               );
             })}
           </div>
         </section>
 
         <section className="section" id="materials" aria-labelledby="materials-title">
-          <div className="section-grid">
-            <div className="section-kicker">02 / Материалы</div>
-            <div className="section-heading">
-              <h2 id="materials-title">Основные фасадные решения</h2>
-              <p>На главной только ключевые материалы. Полный ассортимент и цены остаются в каталоге.</p>
-            </div>
-            <Link className="section-link" href="/catalog">Весь каталог</Link>
-          </div>
+          <SectionHeader
+            eyebrow="02 / Материалы"
+            id="materials-title"
+            title="Основные фасадные решения"
+            description="На главной только ключевые материалы. Полный ассортимент и цены остаются в каталоге."
+            link={{ href: "/catalog", label: "Весь каталог" }}
+          />
           <div className="product-grid">
             {mainMaterialProducts.map((product, index) => (
               <ProductCard
@@ -117,13 +115,12 @@ export function HomeExperience() {
         </section>
 
         <section className="section featured-section" aria-labelledby="featured-title">
-          <div className="section-grid">
-            <div className="section-kicker">03 / Featured</div>
-            <div className="section-heading">
-              <h2 id="featured-title">Глубина, камень, архитектурная плоскость.</h2>
-              <p>Более выразительные материалы вынесены в тёмную showroom-сцену.</p>
-            </div>
-          </div>
+          <SectionHeader
+            eyebrow="03 / Featured"
+            id="featured-title"
+            title="Глубина, камень, архитектурная плоскость."
+            description="Более выразительные материалы вынесены в тёмную showroom-сцену."
+          />
           <div className="featured-grid">
             {featuredProducts.map((product) => (
               <ProductCard key={product.id} product={product} onClick={() => analytics.track("product_view", { slug: product.slug })} />
@@ -132,13 +129,12 @@ export function HomeExperience() {
         </section>
 
         <section className="section explorer-section" aria-labelledby="explorer-title">
-          <div className="section-grid">
-            <div className="section-kicker">04 / Explorer</div>
-            <div className="section-heading">
-              <h2 id="explorer-title">Материал крупно, без шума.</h2>
-              <p>Выбор меняет центральный объект, цену и описание. Это быстрый путь к первому решению.</p>
-            </div>
-          </div>
+          <SectionHeader
+            eyebrow="04 / Explorer"
+            id="explorer-title"
+            title="Материал крупно, без шума."
+            description="Выбор меняет центральный объект, цену и описание. Это быстрый путь к первому решению."
+          />
           <div className="material-explorer">
             <div className="material-tabs" role="tablist" aria-label="Материалы">
               {materialTabs.map((material) => (
@@ -163,19 +159,18 @@ export function HomeExperience() {
               <h3>{activeProduct.name}</h3>
               <p>{activeProduct.description}</p>
               <strong>{formatPrice(activeProduct)}</strong>
-              <Link className="btn secondary" href={`/catalog/${activeProduct.slug}`}>Подробнее</Link>
+              <a className="btn secondary" href={`/catalog/${activeProduct.slug}`}>Подробнее</a>
             </div>
           </div>
         </section>
 
         <section className="section production-section" id="production" aria-labelledby="production-title">
-          <div className="section-grid">
-            <div className="section-kicker">05 / Производство</div>
-            <div className="section-heading">
-              <h2 id="production-title">Производственная логика без выдуманных цифр.</h2>
-              <p>Показываем только то, что уже есть в данных и услугах: фасады, столешницы, подбор материала, расчёт и индивидуальные решения.</p>
-            </div>
-          </div>
+          <SectionHeader
+            eyebrow="05 / Производство"
+            id="production-title"
+            title="Производственная логика без выдуманных цифр."
+            description="Показываем только то, что уже есть в данных и услугах: фасады, столешницы, подбор материала, расчёт и индивидуальные решения."
+          />
           <div className="capability-grid">
             {["Изготовление фасадов", "Подбор материала", "Расчет", "Индивидуальные решения", "Столешницы", "Доставка"].map((item, index) => (
               <article className="capability-card" key={item}>
@@ -187,13 +182,12 @@ export function HomeExperience() {
         </section>
 
         <section className="section inspiration-section" aria-labelledby="inspiration-title">
-          <div className="section-grid">
-            <div className="section-kicker">06 / Проекты</div>
-            <div className="section-heading">
-              <h2 id="inspiration-title">Фасад как предмет в комнате.</h2>
-              <p>Временная визуальная система показывает сценарии: тёплая древесина, тёмная плоскость, каменный edge, стеклянный модуль.</p>
-            </div>
-          </div>
+          <SectionHeader
+            eyebrow="06 / Проекты"
+            id="inspiration-title"
+            title="Фасад как предмет в комнате."
+            description="Временная визуальная система показывает сценарии: тёплая древесина, тёмная плоскость, каменный edge, стеклянный модуль."
+          />
           <div className="inspiration-grid">
             <article className="inspiration-card large">
               <ProductObject product={products.find((product) => product.slug === "natural-veneer") ?? products[0]} size="large" />
@@ -211,14 +205,13 @@ export function HomeExperience() {
         </section>
 
         <section className="section catalog-preview" aria-labelledby="catalog-preview-title">
-          <div className="section-grid">
-            <div className="section-kicker">07 / Каталог</div>
-            <div className="section-heading">
-              <h2 id="catalog-preview-title">Ещё несколько материалов</h2>
-              <p>Остальное не перегружает главную и доступно на отдельной странице каталога.</p>
-            </div>
-            <Link className="section-link" href="/catalog">Перейти в каталог</Link>
-          </div>
+          <SectionHeader
+            eyebrow="07 / Каталог"
+            id="catalog-preview-title"
+            title="Ещё несколько материалов"
+            description="Остальное не перегружает главную и доступно на отдельной странице каталога."
+            link={{ href: "/catalog", label: "Перейти в каталог" }}
+          />
           <div className="product-grid compact">
             {previewProducts.map((product) => (
               <ProductCard key={product.id} product={product} onClick={() => analytics.track("product_view", { slug: product.slug })} />
@@ -234,23 +227,17 @@ export function HomeExperience() {
         </section>
 
         <section className="section order-section" id="order" aria-labelledby="order-title">
-          <div className="section-grid">
-            <div className="section-kicker">08 / Расчет</div>
-            <div className="section-heading">
-              <h2 id="order-title">Короткая заявка без лишних полей.</h2>
-              <p>Форма передаёт UTM, first-touch, last-touch, страницу обращения и выбранный материал.</p>
-            </div>
-          </div>
+          <SectionHeader
+            eyebrow="08 / Расчет"
+            id="order-title"
+            title="Короткая заявка без лишних полей."
+            description="Форма передаёт UTM, first-touch, last-touch, страницу обращения и выбранный материал."
+          />
           <LeadForm />
         </section>
 
         <section className="section faq-section" aria-labelledby="faq-title">
-          <div className="section-grid">
-            <div className="section-kicker">09 / FAQ</div>
-            <div className="section-heading">
-              <h2 id="faq-title">Короткие ответы</h2>
-            </div>
-          </div>
+          <SectionHeader eyebrow="09 / FAQ" id="faq-title" title="Короткие ответы" />
           <div className="faq-list">
             {faq.map((item) => (
               <details key={item.question}>
@@ -280,9 +267,9 @@ export function HomeExperience() {
       <footer className="site-footer">
         <div className="page-shell footer-grid">
           <span>ФАСАДОФ</span>
-          <Link href="/privacy">Политика и согласие</Link>
-          <Link href="/admin/login">Вход менеджера</Link>
-          <Link href="/admin/support">Support admin</Link>
+          <a href="/privacy">Политика и согласие</a>
+          <a href="/admin/login">Вход менеджера</a>
+          <a href="/admin/support">Support admin</a>
         </div>
       </footer>
 

@@ -35,6 +35,9 @@ const eslintConfig = defineConfig([
         version: "detect",
       },
     },
+    rules: {
+      "@next/next/no-html-link-for-pages": "off",
+    },
   },
 ]);
 

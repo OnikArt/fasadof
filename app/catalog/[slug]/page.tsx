@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LeadForm } from "@/components/LeadForm";
 import { ProductCard } from "@/components/ProductCard";
@@ -124,9 +123,9 @@ export default async function ProductOrCategoryPage({ params }: PageProps) {
 
           <aside className="product-info">
             <nav className="breadcrumbs" aria-label="Хлебные крошки">
-              <Link href="/">Главная</Link>
+              <a href="/">Главная</a>
               <span>/</span>
-              <Link href="/catalog">Каталог</Link>
+              <a href="/catalog">Каталог</a>
             </nav>
             <p className="eyebrow">{productCategories[product.category]} / {product.material}</p>
             <h1>{product.name}</h1>
@@ -218,7 +217,7 @@ function CategoryLanding({ slug }: { slug: string }) {
               <h1>{category.title}</h1>
               <p>{category.intro}</p>
             </div>
-            <Link className="section-link" href="/catalog">Весь каталог</Link>
+            <a className="section-link" href="/catalog">Весь каталог</a>
           </div>
         </section>
         <section className="section">

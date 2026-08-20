@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ProductObject } from "@/components/ProductObject";
 import { formatPrice, productCategories, type Product } from "@/data/products";
 
@@ -13,7 +12,7 @@ export function ProductCard({
 }) {
   return (
     <article className={`product-card${featured ? " featured" : ""}`}>
-      <Link href={`/catalog/${product.slug}`} onClick={onClick}>
+      <a href={`/catalog/${product.slug}`} onClick={onClick}>
         <div className="card-media">
           <ProductObject product={product} size={featured ? "large" : "default"} />
         </div>
@@ -26,7 +25,7 @@ export function ProductCard({
           <strong>{formatPrice(product)}</strong>
           <span>Подробнее</span>
         </div>
-      </Link>
+      </a>
     </article>
   );
 }

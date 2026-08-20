@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ProductCard } from "@/components/ProductCard";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -31,7 +30,7 @@ export function CatalogExperience() {
               <h1>Все материалы ФасадоФ</h1>
               <p>Фасады и столешницы с текущими ценами из источника данных. Фильтры оставлены только полезные: категория и поиск по материалу.</p>
             </div>
-            <Link className="section-link" href="/#order">Рассчитать проект</Link>
+            <a className="section-link" href="/#order">Рассчитать проект</a>
           </div>
         </section>
 

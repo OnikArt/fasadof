@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Политика конфиденциальности и согласие",
@@ -21,7 +20,7 @@ export default function PrivacyPage() {
           получать телефон, email или адрес клиента без необходимости.
         </p>
       </div>
-      <Link className="btn secondary" href="/">На главную</Link>
+      <a className="btn secondary" href="/">На главную</a>
     </main>
   );
 }

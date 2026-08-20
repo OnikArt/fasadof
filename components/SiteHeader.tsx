@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { BUSINESS } from "@/config/business";
 import { analytics } from "@/features/analytics/analytics";
@@ -54,15 +53,15 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <div className="header-shell">
-        <Link className="brand" href="/" onClick={closeMenu}>ФАСАДОФ</Link>
+        <a className="brand" href="/" onClick={closeMenu}>ФАСАДОФ</a>
         <nav className="desktop-nav" aria-label="Основная навигация">
           {navItems.map((item) => (
-            <Link href={item.href} key={item.href}>{item.label}</Link>
+            <a href={item.href} key={item.href}>{item.label}</a>
           ))}
         </nav>
-        <Link className="header-cta" href="/#order" onClick={() => analytics.track("cta_click", { place: "header", action: "lead" })}>
+        <a className="header-cta" href="/#order" onClick={() => analytics.track("cta_click", { place: "header", action: "lead" })}>
           Рассчитать
-        </Link>
+        </a>
         <button
           aria-controls="mobile-menu"
           aria-expanded={open}
@@ -77,18 +76,18 @@ export function SiteHeader() {
       <div className={open ? "mobile-menu open" : "mobile-menu"} id="mobile-menu" aria-hidden={!open}>
         <div className="mobile-menu-panel" role="dialog" aria-modal="true" aria-label="Меню сайта">
           <div className="mobile-menu-top">
-            <Link href="/" onClick={closeMenu}>ФАСАДОФ</Link>
+            <a href="/" onClick={closeMenu}>ФАСАДОФ</a>
             <button ref={closeRef} onClick={closeMenu} type="button" aria-label="Закрыть меню">X</button>
           </div>
           <nav aria-label="Мобильная навигация">
             {navItems.map((item, index) => (
-              <Link href={item.href} key={item.href} onClick={closeMenu}>
+              <a href={item.href} key={item.href} onClick={closeMenu}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 {item.label}
-              </Link>
+              </a>
             ))}
           </nav>
-          <Link className="mobile-menu-cta" href="/#order" onClick={closeMenu}>Рассчитать проект</Link>
+          <a className="mobile-menu-cta" href="/#order" onClick={closeMenu}>Рассчитать проект</a>
           <div className="mobile-menu-meta">
             <span>{BUSINESS.workingHoursShort}</span>
             <strong>{BUSINESS.freeDelivery}</strong>
