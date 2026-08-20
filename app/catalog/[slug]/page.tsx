@@ -9,6 +9,19 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
+function ProductObject({ texture, name, large = false }: { texture: string; name: string; large?: boolean }) {
+  return (
+    <div className={`object-visual ${texture}${large ? " large" : ""}`} aria-label={name}>
+      <div className="object-stage">
+        <span className="panel panel-back" />
+        <span className="panel panel-main" />
+        <span className="panel panel-side" />
+        <span className="panel panel-plinth" />
+      </div>
+    </div>
+  );
+}
+
 export async function generateStaticParams() {
   return products.map((product) => ({ slug: product.slug }));
 }
@@ -70,10 +83,11 @@ export default async function ProductPage({ params }: PageProps) {
   return (
     <>
       <main className="product-page">
-        <Link className="back-link" href="/#catalog">Вернуться в каталог</Link>
+        <Link className="back-link" href="/catalog">Каталог</Link>
+
         <section className="product-hero section">
-          <div className={`product-visual large ${product.texture}`} aria-label={product.name}>
-            <span>{product.shortName ?? product.material}</span>
+          <div>
+            <ProductObject texture={product.texture} name={product.name} large />
           </div>
           <div className="product-detail">
             <p className="eyebrow">{productCategories[product.category]} / {product.material}</p>
@@ -90,46 +104,66 @@ export default async function ProductPage({ params }: PageProps) {
             {product.application && (
               <p><b>Применение:</b> {product.application}</p>
             )}
-            <a className="btn primary" href="#product-order">Рассчитать {product.shortName ?? product.material}</a>
+            <a className="btn primary" href="#product-order">Рассчитать материал</a>
           </div>
         </section>
 
         <section className="section product-gallery" aria-labelledby="gallery-title">
           <div className="section-head">
-            <p className="eyebrow">Gallery</p>
-            <h2 id="gallery-title">Фактура в проекте</h2>
+            <p className="eyebrow">Фактура в проекте</p>
+            <h2 id="gallery-title">Материал крупно, в торце и в модуле</h2>
           </div>
           <div className="project-grid">
-            <article><span>01</span><p>Большая плоскость показывает цвет и геометрию фасада.</p></article>
-            <article><span>02</span><p>Торец и профиль согласуются на этапе расчёта.</p></article>
-            <article><span>03</span><p>Материал подбирается под мебельную задачу, а не под витрину.</p></article>
+            <article>
+              <ProductObject texture={product.texture} name={`${product.name}: большая плоскость`} />
+              <span>01</span>
+              <p>Большая плоскость показывает цвет и геометрию фасада.</p>
+            </article>
+            <article>
+              <ProductObject texture={product.texture} name={`${product.name}: торец`} />
+              <span>02</span>
+              <p>Торец и профиль согласуются на этапе расчета.</p>
+            </article>
+            <article>
+              <ProductObject texture={product.texture} name={`${product.name}: мебельный модуль`} />
+              <span>03</span>
+              <p>Материал подбирается под мебельную задачу, а не под витрину.</p>
+            </article>
           </div>
         </section>
 
         <section className="order section" id="product-order" aria-labelledby="product-order-title">
           <div>
-            <p className="eyebrow">Request</p>
-            <h2 id="product-order-title">Расчёт материала</h2>
+            <p className="eyebrow">Заявка</p>
+            <h2 id="product-order-title">Расчет материала</h2>
             <p>Форма передаст выбранный материал, страницу и attribution в server-side API.</p>
           </div>
           <LeadForm product={product.name} />
         </section>
 
-        <section className="section" aria-labelledby="related-title">
-          <div className="section-head">
-            <p className="eyebrow">Related</p>
-            <h2 id="related-title">Похожие материалы</h2>
-          </div>
-          <div className="popular-strip">
-            {related.map((item) => (
-              <a className="popular-chip" href={`/catalog/${item.slug}`} key={item.id}>
-                <div className={`product-visual ${item.texture}`}><span>{item.shortName ?? item.material}</span></div>
-                <span>{item.name}</span>
-                <strong>{formatPrice(item)}</strong>
-              </a>
-            ))}
-          </div>
-        </section>
+        {related.length > 0 && (
+          <section className="section" aria-labelledby="related-title">
+            <div className="section-head">
+              <p className="eyebrow">Рядом по коллекции</p>
+              <h2 id="related-title">Похожие материалы</h2>
+            </div>
+            <div className="catalog-grid">
+              {related.map((item) => (
+                <article className="showroom-card catalog-card" key={item.id}>
+                  <Link href={`/catalog/${item.slug}`}>
+                    <ProductObject texture={item.texture} name={item.name} />
+                    <div>
+                      <span>{productCategories[item.category]}</span>
+                      <h3>{item.name}</h3>
+                      <p>{item.description}</p>
+                      <strong>{formatPrice(item)}</strong>
+                    </div>
+                  </Link>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
     </>

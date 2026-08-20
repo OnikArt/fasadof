@@ -81,8 +81,8 @@ export function SupportChat() {
 
   return (
     <div className={open ? "chat-widget open" : "chat-widget"}>
-      <button className="chat-toggle" onClick={toggle} type="button" aria-expanded={open} aria-label="Открыть чат">
-        {open ? "Закрыть" : "ИИ"}
+      <button className="chat-toggle" onClick={toggle} type="button" aria-expanded={open} aria-label={open ? "Закрыть чат" : "Открыть чат"}>
+        {open ? "Закрыть" : "+"}
       </button>
 
       {open && (

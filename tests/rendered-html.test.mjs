@@ -29,11 +29,21 @@ test("server-renders the ФасадоФ home page", async () => {
 
   const html = await response.text();
   assert.match(html, /ФасадоФ/);
-  assert.match(html, /БЕСПЛАТНАЯ ДОСТАВКА/);
-  assert.match(html, /Рассчитать фасады/);
-  assert.match(html, /Material explorer/);
+  assert.match(html, /Доставка/);
+  assert.match(html, /Рассчитать проект/);
+  assert.match(html, /Ключевая коллекция/);
   assert.match(html, /Открыть чат/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/);
+});
+
+test("server-renders the full catalogue route", async () => {
+  const response = await render("/catalog");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /Все материалы ФасадоФ/);
+  assert.match(html, /Каталог материалов/);
+  assert.match(html, /Эмаль матовая/);
 });
 
 test("server-renders product pages with catalogue data", async () => {
@@ -43,7 +53,7 @@ test("server-renders product pages with catalogue data", async () => {
   const html = await response.text();
   assert.match(html, /Эмаль матовая/);
   assert.match(html, /от 5/);
-  assert.match(html, /Расчёт материала/);
+  assert.match(html, /Расчет материала/);
 });
 
 test("server-renders privacy route", async () => {
