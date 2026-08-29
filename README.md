@@ -36,7 +36,7 @@ The current production target is a fullstack Vinext service, so deploy the GitHu
 For Railway:
 
 ```text
-Build Command: npm ci && npm run build
+Build Command: npm run build
 Start Command: npm run start
 Healthcheck Path: /health
 ```

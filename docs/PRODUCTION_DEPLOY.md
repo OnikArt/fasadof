@@ -81,12 +81,12 @@ Service:
 
 ```text
 Root Directory: repository root
-Build Command: npm ci && npm run build
+Build Command: npm run build
 Start Command: npm run start
 Healthcheck Path: /health
 ```
 
-The same values are committed in `railway.json`, so a Railway deploy from GitHub can read them automatically. Do not set Output Directory on Railway.
+The same values are committed in `railway.json`, so a Railway deploy from GitHub can read them automatically. Do not set Output Directory on Railway. Let Nixpacks run dependency installation; do not prepend `npm ci` to the Railway build command.
 
 Railway variables:
 

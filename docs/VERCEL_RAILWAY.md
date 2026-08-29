@@ -25,7 +25,7 @@ Settings:
 
 ```text
 Root Directory: /
-Build Command: npm ci && npm run build
+Build Command: npm run build
 Start Command: npm run start
 Healthcheck Path: /health
 ```
@@ -33,6 +33,8 @@ Healthcheck Path: /health
 `railway.json` already contains these values.
 
 Do not add `PORT` manually unless Railway support asks for it. Railway injects `PORT`, and the app should listen on that value.
+
+Do not use `npm ci && npm run build` as the Railway build command. Nixpacks installs dependencies before the build step, and running `npm ci` again inside the build step can fail while removing `node_modules`.
 
 ## Required Railway Variables
 
