@@ -43,7 +43,14 @@ Healthcheck Path: /health
 
 These settings are also stored in `railway.json`.
 
-Vercel is not supported by this repository without a separate Nitro migration. A plain Vercel import can return `404: NOT_FOUND` because Vinext's `dist/` output needs the `vinext start` runtime.
+For Vercel, use the committed `vercel.json`:
+
+```text
+Build Command: npm run build:vercel
+Framework Preset: Other
+```
+
+The Vercel build uses the Nitro adapter and generates `.vercel/output`. Do not set a manual Output Directory to `dist`, `dist/client` or `.output`.
 
 ## Architecture
 

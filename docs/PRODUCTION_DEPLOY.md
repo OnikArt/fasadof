@@ -118,20 +118,22 @@ Start with the generated `*.up.railway.app` URL. After frontend production is co
 
 ## Vercel
 
-The current repository is not a standard Next.js or static Vercel project. It builds a Vinext/Vite application into `dist/` and expects `npm run start` (`vinext start`) to run the SSR/API server.
+The current repository is not a standard Next.js or static Vercel project. Its default production build creates a Vinext/Vite `dist/` bundle and expects `npm run start` (`vinext start`) to run the SSR/API server.
 
 Do not set Vercel Output Directory to `dist`, `dist/client`, `.next`, or any guessed path. That deploy can show `404: NOT_FOUND` because the server runtime is not being started.
 
-Use Railway for the current GitHub deploy, or deploy the existing Cloudflare/Sites worker target. Use Vercel only after a separate Vinext + Nitro migration is added:
+Use the committed Nitro/Vercel build path:
 
 ```text
-npm install nitro
-add nitro() next to vinext() in vite.config.ts
-Build Command: vite build
-Output Directory: .output
+Build Command: npm run build:vercel
+Framework Preset: Other
 ```
 
-That change also needs a decision for the current Cloudflare D1 `DB` binding, because Vercel will not provide that binding.
+This path is isolated from Railway: `npm run build` still builds the Vinext runtime for Railway, while `npm run build:vercel` sets `NITRO_PRESET=vercel` and builds `.vercel/output` through Nitro.
+
+Do not set a manual Vercel Output Directory. The Nitro Vercel preset emits the Vercel Build Output API folder at `.vercel/output`, and Vercel reads that folder automatically.
+
+Vercel will not provide the current Cloudflare D1 `DB` binding. The public site and server routes can deploy, but D1-backed production persistence still requires Cloudflare/Sites or a separate database adapter.
 
 Vercel variables:
 

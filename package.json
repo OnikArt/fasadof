@@ -8,11 +8,12 @@
   "scripts": {
     "dev": "node scripts/run-vinext.mjs dev",
     "build": "node scripts/run-vinext.mjs build",
+    "build:vercel": "node scripts/build-vercel.mjs",
     "start": "node scripts/run-vinext.mjs start",
     "preview": "node scripts/run-vinext.mjs start",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .vercel",
     "qa:visual": "node scripts/qa-visual-interactive.mjs",
     "db:generate": "drizzle-kit generate",
     "admin:create": "node scripts/create-admin.mjs"
@@ -38,6 +39,7 @@
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "16.4.0",
+    "nitro": "^3.0.260610-beta",
     "react-server-dom-webpack": "19.2.6",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",

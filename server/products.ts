@@ -65,8 +65,9 @@ function memoryStore() {
 
 async function getD1() {
   try {
-    const mod = await import("cloudflare:workers");
-    return mod.env.DB as unknown as D1DatabaseLike | undefined;
+    const cloudflareWorkers = "cloudflare:workers";
+    const mod = await import(/* @vite-ignore */ cloudflareWorkers) as { env?: { DB?: D1DatabaseLike } };
+    return mod.env?.DB;
   } catch {
     return undefined;
   }

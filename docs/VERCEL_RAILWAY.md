@@ -13,6 +13,15 @@ Code: NOT_FOUND
 
 This is not fixed by adding more environment variables.
 
+Use the committed Vercel build path instead:
+
+```text
+Build Command: npm run build:vercel
+Framework Preset: Other
+```
+
+`vercel.json` already contains the build command. Do not set a manual Output Directory; Nitro emits `.vercel/output`.
+
 ## Use Railway Now
 
 Deploy from GitHub:
@@ -65,15 +74,13 @@ ADMIN_SESSION_SECRET=
 
 The current production database path is Cloudflare D1 via binding `DB`. Railway can run the app, but it does not provide the D1 binding. For persistent leads/products/support data on Railway, add a separate database adapter first. Without that adapter, use the existing Cloudflare/Sites deployment for D1-backed production.
 
-## If Vercel Is Required Later
+## Vercel Notes
 
-Vinext can target Vercel through Nitro, but that is an architecture change:
+Vinext targets Vercel through Nitro:
 
 ```text
-npm install nitro
-add nitro() to vite.config.ts
-Build Command: vite build
-Output Directory: .output
+Build Command: npm run build:vercel
+Output Directory: leave empty
 ```
 
-Before doing this, decide how to replace or bridge the Cloudflare D1 `DB` binding on Vercel.
+Before using Vercel for full production, decide how to replace or bridge the Cloudflare D1 `DB` binding. Vercel does not provide that binding.
