@@ -24,7 +24,6 @@ Attribution передаётся в:
 
 ```text
 VK:        ?utm_source=vk&utm_medium=social&utm_campaign=facades
-Instagram: ?utm_source=instagram&utm_medium=social&utm_campaign=showroom
 MAX:       ?utm_source=max&utm_medium=messenger&utm_campaign=delivery
 Yandex:    ?utm_source=yandex&utm_medium=cpc&utm_campaign=emal
 Google:    ?utm_source=google&utm_medium=cpc&utm_campaign=countertops
@@ -56,10 +55,6 @@ NEXT_PUBLIC_YANDEX_METRIKA_ID=
 
 После добавления счетчика abstraction отправляет reachGoal через `window.ym`, если скрипт Метрики загружен.
 
-## VK Pixel
+## VK
 
-```env
-NEXT_PUBLIC_VK_PIXEL_ID=
-```
-
-Скрипт пикселя можно подключить через layout или tag manager.
+VK pixel and VK lead notifications are removed from the current production flow. VK remains only a public social link.

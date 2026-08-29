@@ -1,9 +1,12 @@
 import { createAIProvider, type AIEnv } from "@/server/ai";
+import { rateLimit } from "@/server/rate-limit";
 import {
   appendMessage,
   getCustomerSession,
   getOrCreateCustomerSession,
+  hasOnlineManagers,
   listCustomerMessages,
+  resumeTimedOutWaitingSessions,
   requestOperator,
 } from "@/server/support-store";
 
@@ -26,7 +29,6 @@ function readServerEnv(): AIEnv {
     GIGACHAT_BASE_URL: process.env.GIGACHAT_BASE_URL,
     GIGACHAT_AUTH_URL: process.env.GIGACHAT_AUTH_URL,
     GIGACHAT_TIMEOUT_MS: process.env.GIGACHAT_TIMEOUT_MS,
-    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   };
 }
 
@@ -43,12 +45,16 @@ export async function GET(request: Request) {
   if (!session) return Response.json({ error: "conversation not found" }, { status: 404 });
 
   const messages = await listCustomerMessages(sessionId, customerToken);
-  return Response.json({ session, messages: messages ?? [] });
+  return Response.json({ session, messages: messages ?? [], managerOnline: await hasOnlineManagers() });
 }
 
 export async function POST(request: Request) {
   try {
+    const limited = rateLimit(request, "chat", 40, 60_000);
+    if (limited) return limited;
+
     const payload = (await request.json()) as ChatPayload;
+    await resumeTimedOutWaitingSessions();
     const action = payload.action ?? "message";
     const session = await getOrCreateCustomerSession({
       sessionId: payload.sessionId,
@@ -58,7 +64,7 @@ export async function POST(request: Request) {
     });
 
     if (action === "poll") {
-      return Response.json({ session, messages: await listCustomerMessages(session.id, session.customerToken) });
+      return Response.json({ session, messages: await listCustomerMessages(session.id, session.customerToken), managerOnline: await hasOnlineManagers() });
     }
 
     if (action === "request_operator") {
@@ -67,7 +73,8 @@ export async function POST(request: Request) {
       return Response.json({
         session: { ...session, status: "WAITING_OPERATOR" },
         messages,
-        reply: "Передал диалог менеджеру. AI больше не отвечает в этом чате.",
+        managerOnline: await hasOnlineManagers(),
+        reply: "Передал диалог менеджеру. Если менеджер не ответит вовремя, AI автоматически вернётся в чат.",
       });
     }
 
@@ -82,7 +89,7 @@ export async function POST(request: Request) {
       const reply = session.status === "CLOSED"
         ? "Диалог закрыт. Если вопрос актуален, начните новый чат."
         : "Сообщение передано менеджеру.";
-      return Response.json({ session, messages, reply });
+      return Response.json({ session, messages, managerOnline: await hasOnlineManagers(), reply });
     }
 
     const provider = createAIProvider(readServerEnv());
@@ -93,7 +100,7 @@ export async function POST(request: Request) {
     await appendMessage({ sessionId: session.id, role: "assistant", content: ai.reply });
 
     const messages = await listCustomerMessages(session.id, session.customerToken);
-    return Response.json({ session, messages, reply: ai.reply, provider: ai.provider });
+    return Response.json({ session, messages, managerOnline: await hasOnlineManagers(), reply: ai.reply, provider: ai.provider });
   } catch {
     return Response.json(
       { reply: "Помощник временно недоступен. Оставьте вопрос менеджеру." },

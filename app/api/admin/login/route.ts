@@ -5,14 +5,22 @@ import {
   readManagerAuthEnv,
   serializeSessionCookie,
 } from "@/server/manager-auth";
+import { rateLimit } from "@/server/rate-limit";
 
 export async function POST(request: Request) {
+  const limited = rateLimit(request, "admin-login", 10, 60_000);
+  if (limited) return limited;
+
   const env = readManagerAuthEnv();
   if (!isManagerAuthConfigured(env)) {
     return Response.json({ error: "Manager auth is not configured" }, { status: 503 });
   }
 
-  const payload = (await request.json()) as { email?: string; password?: string };
+  const payload = (await request.json().catch(() => null)) as { email?: string; password?: string } | null;
+  if (!payload) {
+    return Response.json({ error: "Invalid JSON payload" }, { status: 400 });
+  }
+
   if (!payload.email || !payload.password) {
     return Response.json({ error: "email and password are required" }, { status: 400 });
   }

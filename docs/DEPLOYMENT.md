@@ -7,59 +7,38 @@ npm install
 npm run dev
 ```
 
+Copy `.env.example` to `.env` for local preview and fill the required local values. The vinext runner reads `.env` automatically.
+
 ## Quality gate
 
 ```bash
 npm run lint
 npm run typecheck
-npm run build
 npm test
+npm run build
 ```
 
-## Current Sites deployment
+## Deploy order
 
-This repository is also configured for Sites through `.openai/hosting.json`.
+1. Install dependencies.
+2. Copy `.env.example` and prepare production secrets.
+3. Apply database migration / configure Sites D1 binding `DB`.
+4. Add backend/Sites secret variables.
+5. Add frontend public variables.
+6. Deploy backend/server routes or Sites bundle.
+7. Deploy frontend/domain.
+8. Configure production domain and HTTPS.
+9. Run backend health check: `/api/chat`, `/api/leads`, `/api/admin/session`.
+10. Test GigaChat through `/api/chat`.
+11. Login as manager.
+12. Test manager presence in the customer chat.
+13. Test lead persistence in the database.
+14. Test Chat2Desk widget on the production domain.
 
-Logical bindings:
+## Secrets
 
-- D1: `DB`;
-- R2: not used.
+Keep `GIGACHAT_*`, `ADMIN_*` and database bindings server-side only. Do not create browser-side keys for GigaChat.
 
-## Vercel frontend
+## MAX
 
-- Build command: `npm run build`.
-- Public env only: `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_YANDEX_METRIKA_ID`, `NEXT_PUBLIC_VK_PIXEL_ID`.
-- Do not expose GigaChat, MAX, database or admin secrets in Vercel public variables.
-
-## Railway backend
-
-If backend is split to Railway, deploy server routes/API with:
-
-- `FRONTEND_URL`;
-- `DATABASE_URL`;
-- `AI_PROVIDER`;
-- `GIGACHAT_*`;
-- `MAX_*`;
-- `ADMIN_*`.
-
-## Database
-
-Use D1 for Sites or a compatible SQL database for split backend. Apply migration:
-
-```text
-drizzle/0000_fasadof_support.sql
-```
-
-## CORS
-
-Use `FRONTEND_URL` as the allowed origin. Enable credentials only for auth/admin requests.
-
-Public analytics and public catalogue requests should not send credentials by default.
-
-## Redeploy order
-
-1. Apply database migration.
-2. Deploy backend/server routes with secrets.
-3. Deploy frontend.
-4. Check `/api/chat`, `/api/leads`, `/api/admin/session`.
-5. Check sitemap and robots on the final domain.
+MAX bot integration is not used. The MAX URL remains a public social link in `config/business.ts`.

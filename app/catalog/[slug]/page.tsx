@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LeadForm } from "@/components/LeadForm";
+import { ProductBackButton } from "@/components/ProductBackButton";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductObject } from "@/components/ProductObject";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -109,6 +110,9 @@ export default async function ProductOrCategoryPage({ params }: PageProps) {
     <>
       <SiteHeader />
       <main className="product-page page-main">
+        <div className="section product-back-row">
+          <ProductBackButton />
+        </div>
         <section className="section product-detail-hero">
           <div className="product-gallery">
             <div className="product-gallery-main">

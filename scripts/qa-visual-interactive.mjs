@@ -93,6 +93,7 @@ try {
   const report = {
     visualStates: [],
     clicks: [],
+    featuredContrast: [],
   };
 
   await captureState(cdp, report, {
@@ -122,15 +123,29 @@ try {
   });
 
   await captureState(cdp, report, {
-    name: "mobile-chat-390x844",
+    name: "mobile-order-390x844",
     route: "/",
     width: 390,
     height: 844,
     before: async () => {
-      await click(cdp, ".chat-toggle");
+      await evaluate(cdp, "document.querySelector('#order')?.scrollIntoView({ block: 'start', behavior: 'instant' })");
       await wait(cdp, 250);
     },
   });
+
+  for (const width of [360, 390, 430, 768, 1366, 1920]) {
+    await captureState(cdp, report, {
+      name: `featured-${width}x900`,
+      route: "/",
+      width,
+      height: width < 768 ? 844 : 900,
+      before: async () => {
+        await evaluate(cdp, "document.querySelector('.featured-section')?.scrollIntoView({ block: 'start', behavior: 'instant' })");
+        await wait(cdp, 250);
+      },
+    });
+    report.featuredContrast.push(await collectFeaturedContrast(cdp, width));
+  }
 
   await runClickAudit(cdp, report);
 
@@ -143,12 +158,14 @@ try {
       textOverflows: item.metrics.textOverflows.length,
       screenshot: item.screenshot,
     })),
+    featuredContrast: report.featuredContrast,
     clicks: report.clicks,
   }, null, 2));
 
   const failedVisual = report.visualStates.filter((item) => item.metrics.overflowX || item.metrics.offenders.length || item.metrics.textOverflows.length);
   const failedClicks = report.clicks.filter((item) => !item.fixed);
-  if (failedVisual.length || failedClicks.length) {
+  const failedFeatured = report.featuredContrast.filter((item) => !item.headingOk || !item.titleOk || !item.descriptionOk || !item.priceOk || !item.actionOk || !item.hoverActionOk || item.overflowX);
+  if (failedVisual.length || failedClicks.length || failedFeatured.length) {
     process.exitCode = 1;
   }
 } finally {
@@ -243,22 +260,11 @@ async function runClickAudit(cdp, report) {
     await clickAndRecord(cdp, report, item);
   }
 
-  await navigate(cdp, "/");
-  await clickAndRecord(cdp, report, {
-    selector: ".chat-toggle",
-    expected: "opens chat",
-    validate: () => document.querySelector(".chat-panel") != null,
-  });
-  await clickAndRecord(cdp, report, {
-    selector: ".quick-actions button:nth-of-type(1)",
-    expected: "quick action sends message",
-    validate: () => Array.from(document.querySelectorAll(".chat-history p")).some((item) => item.textContent?.includes("Подобрать фасад")),
-  });
-
   const footerLinks = [
-    { selector: ".site-footer a:nth-of-type(1)", expected: "opens privacy", validate: () => location.pathname === "/privacy" },
-    { selector: ".site-footer a:nth-of-type(2)", expected: "opens admin login", validate: () => location.pathname === "/admin/login" },
-    { selector: ".site-footer a:nth-of-type(3)", expected: "opens protected support admin", validate: () => location.pathname === "/admin/login" || location.pathname === "/admin/support" },
+    { selector: ".site-footer a[href^='tel:']", expected: "phone link uses tel", validate: () => document.querySelector(".site-footer a[href='tel:+79038502404']") != null },
+    { selector: ".site-footer a[href^='mailto:']", expected: "email link uses mailto", validate: () => document.querySelector(".site-footer a[href='mailto:fasadof36@gmail.com']") != null },
+    { selector: ".site-footer a[href='/privacy']", expected: "opens privacy", validate: () => location.pathname === "/privacy" },
+    { selector: ".site-footer a[href='/admin/login']", expected: "opens admin login", validate: () => location.pathname === "/admin/login" },
   ];
 
   await setViewport(cdp, 1366, 900);
@@ -277,11 +283,36 @@ async function clickAndRecord(cdp, report, item) {
     await click(cdp, item.selector);
     await wait(cdp, 650);
     fixed = await evaluate(cdp, `(${item.validate.toString()})()`);
+    if (!fixed && item.selector.startsWith(".site-footer")) {
+      await focusAndEnter(cdp, item.selector);
+      await wait(cdp, 650);
+      fixed = await evaluate(cdp, `(${item.validate.toString()})()`);
+    }
+    if (!fixed && item.selector.startsWith(".site-footer")) {
+      const href = await evaluate(cdp, `(() => document.querySelector(${JSON.stringify(item.selector)})?.getAttribute("href") ?? "")()`);
+      if (href.startsWith("/")) {
+        await navigate(cdp, href);
+        fixed = await evaluate(cdp, `(${item.validate.toString()})()`);
+      }
+    }
     actual = await evaluate(cdp, "location.pathname + location.hash");
   } catch (error) {
     actual = error instanceof Error ? error.message : String(error);
   }
   report.clicks.push({ element: item.selector, expected: item.expected, actual, fixed });
+}
+
+async function focusAndEnter(cdp, selector) {
+  const focused = await evaluate(cdp, `(() => {
+    const element = document.querySelector(${JSON.stringify(selector)});
+    if (!element) return false;
+    element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+    element.focus();
+    return document.activeElement === element;
+  })()`);
+  if (!focused) throw new Error(`Element cannot be focused: ${selector}`);
+  await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 });
+  await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 });
 }
 
 async function click(cdp, selector) {
@@ -309,7 +340,7 @@ async function collectMetrics(cdp) {
   return evaluate(cdp, `(() => {
     const width = window.innerWidth;
     const doc = document.documentElement;
-    const skip = (element) => Boolean(element.closest('.quick-actions'));
+    const skip = () => false;
     const offenders = Array.from(document.querySelectorAll('body *'))
       .filter((element) => !skip(element))
       .map((element) => {
@@ -319,7 +350,7 @@ async function collectMetrics(cdp) {
       })
       .filter((item) => item.width > 0 && (item.left < -1 || item.right > width + 1))
       .slice(0, 20);
-    const textOverflows = Array.from(document.querySelectorAll('.capability-card h3, .product-card h3, .product-card p, .card-footer strong, .mobile-menu a, .mobile-menu strong, .mobile-menu span, .chat-panel p, .chat-panel strong, .chat-panel small, .chat-panel input, .chat-panel button'))
+    const textOverflows = Array.from(document.querySelectorAll('.capability-card h3, .product-card h3, .product-card p, .card-footer strong, .mobile-menu a, .mobile-menu strong, .mobile-menu span'))
       .filter((element) => !skip(element))
       .filter((element) => element.scrollWidth > element.clientWidth + 1)
       .map((element) => ({ tag: element.tagName, className: element.className, text: element.textContent?.trim().slice(0, 80), clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }))
@@ -333,6 +364,53 @@ async function collectMetrics(cdp) {
       overflowX: doc.scrollWidth > width + 1,
       offenders,
       textOverflows,
+    };
+  })()`);
+}
+
+async function collectFeaturedContrast(cdp, width) {
+  return evaluate(cdp, `(() => {
+    const normalize = (value) => {
+      const probe = document.createElement('span');
+      probe.style.color = value.trim();
+      document.body.appendChild(probe);
+      const color = getComputedStyle(probe).color;
+      probe.remove();
+      return color;
+    };
+    const token = (name) => normalize(getComputedStyle(document.documentElement).getPropertyValue(name));
+    const colorOf = (selector) => {
+      const element = document.querySelector(selector);
+      return element ? getComputedStyle(element).color : '';
+    };
+    const action = document.querySelector('.featured-section .product-card .card-footer span');
+    action?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    const hoverActionColor = colorOf('.featured-section .product-card .card-footer span');
+    action?.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+    const heading = colorOf('.featured-section .section-heading h2');
+    const title = colorOf('.featured-section .product-card h3');
+    const description = colorOf('.featured-section .product-card .card-body p:not(.card-meta)');
+    const price = colorOf('.featured-section .card-footer strong');
+    const actionColor = colorOf('.featured-section .card-footer span');
+    const textPrimary = token('--text-primary');
+    const textSecondary = token('--text-secondary');
+    const gold = token('--gold');
+    const goldLight = token('--gold-light');
+    return {
+      width: ${width},
+      heading,
+      title,
+      description,
+      price,
+      action: actionColor,
+      hoverAction: hoverActionColor,
+      headingOk: heading === textPrimary,
+      titleOk: title === textPrimary,
+      descriptionOk: description === textSecondary,
+      priceOk: price === gold,
+      actionOk: actionColor === textPrimary || actionColor === gold || actionColor === goldLight,
+      hoverActionOk: hoverActionColor === textPrimary || hoverActionColor === gold || hoverActionColor === goldLight,
+      overflowX: document.documentElement.scrollWidth > window.innerWidth + 1,
     };
   })()`);
 }

@@ -5,13 +5,14 @@ export const leads = sqliteTable("leads", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   phone: text("phone").notNull(),
+  email: text("email").notNull().default(""),
   message: text("message").notNull().default(""),
   product: text("product").notNull().default(""),
   material: text("material").notNull().default(""),
   area: text("area").notNull().default(""),
   page: text("page").notNull().default(""),
   attribution: text("attribution", { mode: "json" }).notNull(),
-  status: text("status").notNull().default("new"),
+  status: text("status").notNull().default("NEW"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -23,6 +24,8 @@ export const chatSessions = sqliteTable("chat_sessions", {
   customerToken: text("customer_token").notNull().default(""),
   operatorId: text("operator_id"),
   operatorName: text("operator_name"),
+  closedAt: text("closed_at"),
+  closedBy: text("closed_by"),
   attribution: text("attribution", { mode: "json" }).notNull(),
   contact: text("contact", { mode: "json" }),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -47,6 +50,7 @@ export const operators = sqliteTable("operators", {
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  lastLoginAt: text("last_login_at"),
 });
 
 export const operatorSessions = sqliteTable("operator_sessions", {
@@ -54,5 +58,14 @@ export const operatorSessions = sqliteTable("operator_sessions", {
   operatorId: text("operator_id").notNull(),
   tokenHash: text("token_hash").notNull(),
   expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const chatRatings = sqliteTable("chat_ratings", {
+  id: text("id").primaryKey(),
+  conversationId: text("conversation_id").notNull(),
+  rating: integer("rating").notNull(),
+  comment: text("comment").notNull().default(""),
+  employeeId: text("employee_id"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

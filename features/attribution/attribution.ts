@@ -65,7 +65,7 @@ export function getAttribution(): Attribution {
 
   const lastTouch = captureTouch();
   const stored = window.localStorage.getItem(storageKey);
-  const firstTouch = stored ? (JSON.parse(stored) as TouchAttribution) : lastTouch;
+  const firstTouch = stored ? parseStoredTouch(stored) ?? lastTouch : lastTouch;
 
   if (!stored) {
     window.localStorage.setItem(storageKey, JSON.stringify(firstTouch));
@@ -73,4 +73,13 @@ export function getAttribution(): Attribution {
 
   window.sessionStorage.setItem(`${storageKey}.last`, JSON.stringify(lastTouch));
   return { firstTouch, lastTouch };
+}
+
+function parseStoredTouch(value: string) {
+  try {
+    return JSON.parse(value) as TouchAttribution;
+  } catch {
+    window.localStorage.removeItem(storageKey);
+    return null;
+  }
 }

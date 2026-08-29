@@ -8,10 +8,32 @@ const outDir = join(process.cwd(), "qa", "responsive");
 const userDataDir = join(process.cwd(), "qa", `chrome-profile-${Date.now()}`);
 const port = 9333 + Math.floor(Math.random() * 300);
 
+const matrix = [
+  [320, 568],
+  [360, 800],
+  [375, 812],
+  [390, 844],
+  [414, 896],
+  [430, 932],
+  [600, 960],
+  [720, 1024],
+  [768, 1024],
+  [820, 1180],
+  [834, 1194],
+  [1024, 768],
+  [1280, 720],
+  [1366, 768],
+  [1440, 900],
+  [1600, 900],
+  [1920, 1080],
+];
+
 const checks = [
-  ...[320, 360, 375, 390, 430, 768, 1024, 1280, 1440, 1920].map((width) => ({ route: "/", width, height: width < 768 ? 920 : 1100 })),
+  ...matrix.map(([width, height]) => ({ route: "/", width, height })),
   { route: "/catalog", width: 390, height: 1200 },
   { route: "/catalog", width: 1440, height: 1100 },
+  { route: "/contacts", width: 390, height: 1000 },
+  { route: "/contacts", width: 1440, height: 1000 },
   { route: "/catalog/enamel", width: 390, height: 1200 },
   { route: "/catalog/enamel", width: 1440, height: 1100 },
   { route: "/admin/login", width: 390, height: 900 },
@@ -105,6 +127,8 @@ try {
   for (const check of checks) {
     const failures = [];
     const exceptions = [];
+    const requestUrls = new Map();
+    const removeRequest = cdp.on("Network.requestWillBeSent", (event) => requestUrls.set(event.requestId, event.request?.url ?? ""));
     const removeNetwork = cdp.on("Network.loadingFailed", (event) => failures.push(event));
     const removeException = cdp.on("Runtime.exceptionThrown", (event) => exceptions.push(event.exceptionDetails?.text || "runtime exception"));
 
@@ -128,7 +152,7 @@ try {
       expression: `(() => {
         const width = window.innerWidth;
         const doc = document.documentElement;
-        const selectors = [".site-header", ".hero-section", ".hero-brand", ".hero-visual", ".hero-copy", ".hero-facts", ".product-grid", ".product-card", ".material-explorer", ".lead-form", ".chat-widget", ".catalog-toolbar", ".product-detail-hero"];
+        const selectors = [".site-header", ".hero-section", ".hero-brand", ".hero-visual", ".hero-copy", ".hero-facts", ".product-grid", ".product-card", ".material-explorer", ".lead-form", ".catalog-toolbar", ".product-detail-hero", ".card-media", ".category-card", ".product-gallery-main"];
         const boxes = selectors.map((selector) => {
           const el = document.querySelector(selector);
           if (!el) return null;
@@ -140,7 +164,15 @@ try {
           const className = typeof el.className === "string" ? el.className : "";
           return { tag: el.tagName, className, left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width) };
         }).filter((item) => item.width > 0 && (item.left < -1 || item.right > width + 1)).slice(0, 12);
-        return { route: location.pathname, width, height: window.innerHeight, scrollWidth: doc.scrollWidth, overflowX: doc.scrollWidth > width + 1, boxes, offenders };
+        const mediaOffenders = Array.from(document.querySelectorAll(".card-media, .category-card, .inspiration-card, .product-gallery-main, .product-gallery-thumbs button")).flatMap((container) => {
+          const c = container.getBoundingClientRect();
+          return Array.from(container.querySelectorAll(".product-object, img, picture")).map((child) => {
+            const r = child.getBoundingClientRect();
+            const escaped = r.left < c.left - 1 || r.right > c.right + 1 || r.top < c.top - 1 || r.bottom > c.bottom + 1;
+            return escaped ? { container: container.className, child: child.className || child.tagName, c: { left: Math.round(c.left), right: Math.round(c.right), top: Math.round(c.top), bottom: Math.round(c.bottom) }, r: { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom) } } : null;
+          }).filter(Boolean);
+        }).slice(0, 12);
+        return { route: location.pathname, width, height: window.innerHeight, scrollWidth: doc.scrollWidth, overflowX: doc.scrollWidth > width + 1, boxes, offenders, mediaOffenders };
       })()`,
     });
 
@@ -149,6 +181,7 @@ try {
     const screenshotPath = join(outDir, `${safeRoute}-${check.width}.png`);
     await writeFile(screenshotPath, Buffer.from(screenshot.data, "base64"));
 
+    removeRequest();
     removeNetwork();
     removeException();
     report.push({
@@ -156,7 +189,7 @@ try {
       width: check.width,
       screenshot: screenshotPath,
       metrics: metrics.result.value,
-      networkFailures: failures.map((failure) => ({ errorText: failure.errorText, type: failure.type })),
+      networkFailures: failures.map((failure) => ({ url: requestUrls.get(failure.requestId) ?? "", errorText: failure.errorText, type: failure.type })),
       exceptions,
     });
   }
@@ -175,6 +208,7 @@ function nodeReport(report) {
     overflowX: item.metrics.overflowX,
     scrollWidth: item.metrics.scrollWidth,
     offenders: item.metrics.offenders.length,
+    mediaOffenders: item.metrics.mediaOffenders.length,
     networkFailures: item.networkFailures.length,
     exceptions: item.exceptions.length,
   }));

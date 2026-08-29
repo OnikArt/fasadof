@@ -2,47 +2,40 @@
 
 Админка ФасадоФ находится по адресу `/admin/login`. `/admin/support` защищён server-side проверкой HttpOnly cookie.
 
-## Первый менеджер
+## Login
 
-Создайте hash пароля:
+Создайте данные первого менеджера:
 
 ```bash
 npm run admin:create -- manager@example.com "very-strong-password" "Алексей"
 ```
 
-Скрипт выведет:
+Скрипт выведет `ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`. Добавьте их в production secrets.
 
-```env
-ADMIN_EMAIL=
-ADMIN_NAME=
-ADMIN_PASSWORD_HASH=
-ADMIN_SESSION_SECRET=
-```
+## Manager creation
 
-Добавьте эти значения в production secrets. Не храните реальный пароль в репозитории.
+Текущая production-схема поддерживает одного менеджера через env. Для нескольких операторов используйте таблицу `operators` и отдельный UI создания аккаунтов.
 
-## Session
+## Online/offline
 
-После успешного входа сервер создаёт подписанную cookie `fasadof_manager_session`:
+Менеджер считается online только после входа и открытой страницы `/admin/support`. Если вкладка закрыта и heartbeat прекратился, статус станет offline после TTL.
 
-- `HttpOnly`;
-- `SameSite=Lax`;
-- `Secure` на HTTPS;
-- срок действия 10 часов.
+## Heartbeat
 
-Logout вызывает `/api/admin/logout` и очищает cookie.
+`SupportAdmin` вызывает `POST /api/admin/session` каждые 20 секунд. Endpoint обновляет presence и подтверждает валидность cookie.
 
-## Database
+## Support queue
 
-Для очереди поддержки и заявок используется D1 binding `DB` из `.openai/hosting.json`.
+Диалоги имеют статусы `AI`, `WAITING_OPERATOR`, `OPERATOR`, `CLOSED`. Очередь `/admin/support` позволяет фильтровать статусы, брать диалог, отвечать и закрывать.
 
-Миграция: `drizzle/0000_fasadof_support.sql`.
+## Replies
 
-Drizzle schema: `db/schema.ts`.
+Если менеджер отвечает в диалоге, сервер автоматически переводит разговор в `OPERATOR` и сохраняет сообщение как `operator`.
 
-## Production security
+## Logout
 
-- Пароль хранится только как PBKDF2 hash.
-- `ADMIN_SESSION_SECRET` должен быть длинным случайным значением.
-- Не используйте одинаковый secret между staging и production.
-- При компрометации пароля пересоздайте hash и session secret.
+Кнопка `Выйти` вызывает `/api/admin/logout`, очищает `fasadof_manager_session` и возвращает на `/admin/login`.
+
+## Security
+
+Пароль хранится только как PBKDF2 hash. Cookie `HttpOnly`, `SameSite=Lax`, `Secure` на HTTPS. Не храните реальные пароли и secrets в репозитории.

@@ -5,8 +5,12 @@ import { formatPrice, products } from "@/data/products";
 export function buildKnowledgeBase() {
   return {
     brand: BUSINESS.name,
-    delivery: BUSINESS.freeDelivery,
-    workingHours: BUSINESS.workingHours,
+    delivery: BUSINESS.delivery.label,
+    deliveryScope: "Бесплатная доставка действует только по городу Воронеж. Для других городов условия уточняет менеджер.",
+    workingHours: BUSINESS.workingHours.label,
+    phone: BUSINESS.phone.display,
+    email: BUSINESS.email,
+    address: BUSINESS.address,
     products: products.map((product) => ({
       name: product.name,
       material: product.material,
@@ -18,6 +22,7 @@ export function buildKnowledgeBase() {
     faq,
     guardrails: [
       "Не придумывать цены, сроки, наличие, гарантию и технические характеристики.",
+      "Не утверждать бесплатную доставку за пределами Воронежа.",
       "Если данных нет, предложить передать вопрос менеджеру.",
       "Не отправлять внешнему AI-провайдеру телефон, email или адрес клиента без необходимости.",
     ],

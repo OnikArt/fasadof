@@ -5,8 +5,7 @@
 - [ ] Real phone, email and address added.
 - [ ] VK, Instagram and MAX links added.
 - [ ] Production domain reflected in config, sitemap and robots.
-- [ ] `GEMINI_API_KEY` set server-side.
-- [ ] `MAX_BOT_TOKEN` and `MAX_CHAT_ID` set server-side.
+- [ ] `GIGACHAT_AUTH_KEY` set server-side.
 - [ ] Analytics scripts installed.
 - [ ] Yandex Metrika goal events verified.
 - [ ] VK pixel events verified if used.
@@ -18,6 +17,6 @@
 - [ ] Responsive check: 320, 360, 375, 390, 430, 768, 1024, 1280, 1440, 1920.
 - [ ] Console has no production errors.
 - [ ] Forms tested end-to-end.
-- [ ] Chat tested with and without Gemini key.
-- [ ] MAX notification tested end-to-end.
+- [ ] Chat tested with and without GigaChat key.
+- [ ] VK notification tested end-to-end.
 - [ ] Backups and rollback plan prepared.

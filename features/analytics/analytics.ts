@@ -10,17 +10,16 @@ export type AnalyticsEvent =
   | "chat_open"
   | "chat_message"
   | "operator_requested"
+  | "operator_connected"
+  | "manager_wait_timeout"
+  | "ai_resumed"
+  | "manager_online"
   | "phone_click"
   | "max_click";
 
 declare global {
   interface Window {
     ym?: (counterId: number, method: string, eventName?: string, params?: Record<string, unknown>) => void;
-    VK?: {
-      Retargeting?: {
-        Event: (eventName: string, params?: Record<string, unknown>) => void;
-      };
-    };
   }
 }
 
@@ -38,7 +37,5 @@ export const analytics = {
     if (yandexId && window.ym) {
       window.ym(yandexId, "reachGoal", event, payload);
     }
-
-    window.VK?.Retargeting?.Event(event, payload);
   },
 };

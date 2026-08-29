@@ -7,8 +7,8 @@ import { getManagerFromCookieHeader } from "@/server/manager-auth";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Support admin",
-  description: "Панель поддержки ФасадоФ для очереди диалогов, human takeover и ответов менеджеров.",
+  title: "Админ-панель",
+  description: "Панель управления ФасадоФ для каталога, сотрудников и настроек.",
   robots: {
     index: false,
     follow: false,
@@ -23,7 +23,7 @@ export default async function AdminSupportPage() {
 
   return (
     <main className="admin-page">
-      <SupportAdmin managerName={manager.name} />
+      <SupportAdmin manager={{ id: manager.id ?? manager.email, name: manager.name, email: manager.email, role: manager.role }} />
     </main>
   );
 }

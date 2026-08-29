@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Chat2DeskWidget } from "@/components/Chat2DeskWidget";
 import { BUSINESS } from "@/config/business";
 import "./globals.css";
 
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "ФасадоФ - premium showroom фасадов и столешниц",
-    description: "Мебельные фасады и столешницы на заказ. Бесплатная доставка. ПН–ПТ 09:00–18:00.",
+    description: `Мебельные фасады и столешницы на заказ. ${BUSINESS.delivery.label}. ${BUSINESS.workingHours.label}.`,
     url: "/",
     siteName: "ФасадоФ",
     locale: "ru_RU",
@@ -53,15 +54,26 @@ export default function RootLayout({
 }>) {
   const organizationSchema = {
     "@context": "https://schema.org",
-    "@type": "Organization",
+    "@type": "LocalBusiness",
     name: BUSINESS.name,
     url: BUSINESS.siteUrl,
+    telephone: BUSINESS.phone.e164,
+    email: BUSINESS.email,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "ул. Машиностроителей, д. 3",
+      addressLocality: "Воронеж",
+      addressCountry: "RU",
+    },
+    openingHours: "Mo-Fr 09:00-17:00",
+    sameAs: [BUSINESS.socials.vk, BUSINESS.socials.max],
   };
 
   return (
     <html lang="ru">
       <body>
         {children}
+        <Chat2DeskWidget />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}

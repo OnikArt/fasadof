@@ -8,7 +8,9 @@ export type Product = {
   name: string;
   shortName?: string;
   description: string;
+  fullDescription?: string;
   priceFrom?: number;
+  pricePrefix?: string;
   priceUnit?: string;
   priceOnRequest?: boolean;
   image: string;
@@ -17,6 +19,11 @@ export type Product = {
   features?: string[];
   application?: string;
   popular?: boolean;
+  status?: "published" | "hidden" | "archived";
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
 };
 
 export const products: Product[] = [

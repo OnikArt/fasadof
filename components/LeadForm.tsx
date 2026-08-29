@@ -1,8 +1,10 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import { PhoneInput } from "@/components/PhoneInput";
 import { analytics } from "@/features/analytics/analytics";
 import { getAttribution } from "@/features/attribution/attribution";
+import { normalizePhone, validateRussianPhone } from "@/features/phone/phone";
 
 const needs = ["Фасады", "Столешница", "Другое"];
 const materials = ["Эмаль", "Шпон", "Массив", "ПЭТ", "Fenix", "ПВХ", "Не знаю"];
@@ -38,9 +40,11 @@ export function LeadForm({ product = "" }: { product?: string }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (status === "loading") return;
+
     const nextErrors: Record<string, string> = {};
     if (!form.name.trim()) nextErrors.name = "Укажите имя";
-    if (!form.phone.trim()) nextErrors.phone = "Укажите телефон";
+    if (!validateRussianPhone(form.phone)) nextErrors.phone = "Укажите телефон в формате +7 (___) ___-__-__";
     if (!form.consent) nextErrors.consent = "Нужно согласие на обработку данных";
 
     if (Object.keys(nextErrors).length > 0) {
@@ -57,7 +61,7 @@ export function LeadForm({ product = "" }: { product?: string }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name: form.name,
-          phone: form.phone,
+          phone: normalizePhone(form.phone),
           message: form.message,
           product: form.product || form.need,
           material: form.material,
@@ -83,7 +87,7 @@ export function LeadForm({ product = "" }: { product?: string }) {
     return (
       <div className="form-state success" role="status">
         <span>Заявка принята.</span>
-        <p>Интеграция готова к backend/CRM. После подключения менеджер получит заявку автоматически.</p>
+        <p>Мы сохранили обращение и свяжемся с вами в рабочее время.</p>
       </div>
     );
   }
@@ -157,7 +161,7 @@ export function LeadForm({ product = "" }: { product?: string }) {
           </label>
           <label>
             Телефон
-            <input inputMode="tel" value={form.phone} onChange={(event) => updateField("phone", event.target.value)} />
+            <PhoneInput value={form.phone} onValueChange={(formatted) => updateField("phone", formatted)} />
             {errors.phone && <span className="field-error">{errors.phone}</span>}
           </label>
           <label>

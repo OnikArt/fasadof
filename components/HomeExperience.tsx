@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { ProductCard } from "@/components/ProductCard";
 import { HeroObject, ProductObject } from "@/components/ProductObject";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SiteHeader } from "@/components/SiteHeader";
-import { SupportChat } from "@/components/SupportChat";
 import { LeadForm } from "@/components/LeadForm";
 import { BUSINESS } from "@/config/business";
 import { faq } from "@/data/faq";
@@ -166,16 +166,21 @@ export function HomeExperience() {
 
         <section className="section production-section" id="production" aria-labelledby="production-title">
           <SectionHeader
-            eyebrow="05 / Производство"
+            eyebrow="05 / Преимущества"
             id="production-title"
-            title="Производственная логика без выдуманных цифр."
-            description="Показываем только то, что уже есть в данных и услугах: фасады, столешницы, подбор материала, расчёт и индивидуальные решения."
+            title="Цена, срок и качество под контролем."
+            description="Три понятных причины обратиться за фасадами и столешницами в ФасадоФ."
           />
           <div className="capability-grid">
-            {["Изготовление фасадов", "Подбор материала", "Расчет", "Индивидуальные решения", "Столешницы", "Доставка"].map((item, index) => (
-              <article className="capability-card" key={item}>
+            {[
+              { title: "Низкие цены", icon: "₽" },
+              { title: "Быстрые сроки", icon: "◷" },
+              { title: "Качество", icon: "✓" },
+            ].map((item, index) => (
+              <article className="capability-card" key={item.title}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
-                <h3>{item}</h3>
+                <strong aria-hidden="true">{item.icon}</strong>
+                <h3>{item.title}</h3>
               </article>
             ))}
           </div>
@@ -221,8 +226,8 @@ export function HomeExperience() {
 
         <section className="delivery-section" id="delivery">
           <div className="page-shell">
-            <span>Доставка —</span>
-            <strong>бесплатно.</strong>
+            <span>Воронеж —</span>
+            <strong>доставка бесплатно.</strong>
           </div>
         </section>
 
@@ -253,11 +258,23 @@ export function HomeExperience() {
             <article className="contact-panel">
               <p className="eyebrow">Контакты</p>
               <h2 id="contacts-title">Связаться с ФасадоФ</h2>
-              <p>Телефон, email и адрес нужно заменить на финальные данные владельца бизнеса.</p>
+              <p>{BUSINESS.address}</p>
+              <p>
+                <a href={BUSINESS.phone.href} onClick={() => analytics.track("phone_click", { place: "contacts" })}>
+                  {BUSINESS.phone.display}
+                </a>
+              </p>
+              <p><a href={BUSINESS.emailHref}>{BUSINESS.email}</a></p>
+              <div className="social-links" aria-label="Социальные сети">
+                <a href={BUSINESS.socials.vk} target="_blank" rel="noreferrer">VK</a>
+                <a href={BUSINESS.socials.max} target="_blank" rel="noreferrer" onClick={() => analytics.track("max_click", { place: "contacts" })}>MAX</a>
+                <a href={BUSINESS.socials.yandexMaps} target="_blank" rel="noreferrer">Яндекс Карты</a>
+              </div>
             </article>
             <article className="contact-panel pink">
               <strong>{BUSINESS.freeDelivery}</strong>
               <span>{BUSINESS.workingHoursShort}</span>
+              <span>{BUSINESS.workingHours.weekend}</span>
               <p>Менеджеры отвечают в рабочее время. AI-помощник доступен онлайн.</p>
             </article>
           </div>
@@ -266,14 +283,26 @@ export function HomeExperience() {
 
       <footer className="site-footer">
         <div className="page-shell footer-grid">
-          <span>ФАСАДОФ</span>
-          <a href="/privacy">Политика и согласие</a>
-          <a href="/admin/login">Вход менеджера</a>
-          <a href="/admin/support">Support admin</a>
+          <span className="footer-brand"><BrandLogo compact /></span>
+          <div className="footer-contact">
+            <a href={BUSINESS.phone.href} onClick={() => analytics.track("phone_click", { place: "footer" })}>{BUSINESS.phone.display}</a>
+            <a href={BUSINESS.emailHref}>{BUSINESS.email}</a>
+          </div>
+          <nav className="footer-links" aria-label="Ссылки футера">
+            <a href={BUSINESS.socials.max} target="_blank" rel="noreferrer" onClick={() => analytics.track("max_click", { place: "footer" })}>MAX</a>
+            <a href={BUSINESS.socials.vk} target="_blank" rel="noreferrer">VK</a>
+            <a href={BUSINESS.socials.yandexMaps} target="_blank" rel="noreferrer">Яндекс Карты</a>
+            <a href="/privacy">Политика и согласие</a>
+            <a href="/admin/login">Вход в админ-панель</a>
+          </nav>
+          <div className="footer-schedule" aria-label="График работы">
+            <strong>График работы</strong>
+            {BUSINESS.workingHours.schedule.map((item) => (
+              <span key={item.label}>{item.label}: {item.value}</span>
+            ))}
+          </div>
         </div>
       </footer>
-
-      <SupportChat />
     </>
   );
 }

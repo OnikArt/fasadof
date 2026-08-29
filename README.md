@@ -1,67 +1,85 @@
 # ФасадоФ
 
-Production-ready сайт для бренда «ФасадоФ»: мебельные фасады, столешницы, каталог материалов, заявки, SEO, аналитика, AI-чат и MAX-интеграция.
+Production-oriented site for the Russian brand «ФасадоФ»: furniture fronts, countertops, catalogue pages, lead forms, SEO, attribution, GigaChat-powered support chat, manager takeover and VK lead notifications.
 
 ## Stack
 
-- React
+- React 19
 - TypeScript
 - Vite / vinext
-- Cloudflare Worker-compatible runtime
-- Drizzle schema for future database persistence
+- Cloudflare Worker-compatible runtime through Sites
+- Drizzle schema for D1-compatible persistence
 
-## Run
+## Local Start
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Build
+The local runner reads `.env` before starting vinext.
+
+## Build And Preview
 
 ```bash
 npm run lint
 npm run typecheck
+npm test
 npm run build
+npm run preview
 ```
 
 ## Architecture
 
-- `config/business.ts` - business settings, delivery, hours, contacts, social links.
-- `data/products.ts` - single product catalogue source.
-- `data/faq.ts` - FAQ and AI knowledge content.
-- `components/` - home experience, lead form, support chat.
-- `features/analytics/` - centralized analytics layer.
-- `features/attribution/` - UTM first-touch and last-touch capture.
-- `server/` - server-only AI, MAX, lead and knowledge abstractions.
-- `app/api/` - API endpoints for leads and chat.
-- `db/schema.ts` - database-ready tables for leads, chat sessions, messages and operators.
-- `docs/` - setup, launch and integration documentation.
+- `app/` - routes, metadata and API endpoints.
+- `components/` - header, home experience, product cards, lead form, support chat and admin UI.
+- `config/business.ts` - centralized phone, email, address, delivery, working hours and social links.
+- `data/products.ts` - catalogue data and prices.
+- `features/analytics/` - browser analytics event abstraction.
+- `features/attribution/` - first-touch and last-touch UTM/referrer capture.
+- `features/phone/` - shared Russian phone formatting, normalization and validation.
+- `server/` - server-only AI, lead persistence, VK notifications, auth, support storage and rate limiting.
+- `db/schema.ts` and `drizzle/` - database schema and migration.
+- `docs/` - deployment, admin, support, env and integration guides.
 
-## Pages
+## Main Routes
 
 - `/`
+- `/catalog`
 - `/catalog/:slug`
+- `/admin/login`
 - `/admin/support`
 - `/privacy`
-- branded 404
 
-## Integration points
+## Main APIs
 
 - `POST /api/leads`
 - `POST /api/chat`
-- Gemini through `GEMINI_API_KEY`
-- MAX through `MAX_BOT_TOKEN` and `MAX_CHAT_ID`
-- Yandex Metrika / VK Pixel through `features/analytics/analytics.ts`
+- `GET/POST /api/admin/session`
+- `POST /api/admin/login`
+- `POST /api/admin/logout`
+- `GET/POST /api/admin/conversations`
+- `GET/PATCH /api/admin/leads`
 
-## Required owner data
+## Environment
 
-- phone
-- email
-- address
-- social URLs
-- production domain
-- Gemini key
-- MAX token and chat id
-- analytics IDs
-- final privacy policy/legal details
+Use `.env.example` as the template. Server secrets must not use `NEXT_PUBLIC_*`.
+
+Required production integrations:
+
+- GigaChat: `GIGACHAT_AUTH_KEY`;
+- Chat2Desk: `NEXT_PUBLIC_CHAT2DESK_WIDGET_TOKEN`;
+- Admin auth: `ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`;
+- D1/Sites database binding: `DB`.
+
+## Documentation
+
+- `docs/DEPLOYMENT.md`
+- `docs/ENVIRONMENT_VARIABLES.md`
+- `docs/ADMIN_GUIDE.md`
+- `docs/ADMIN_SETUP.md`
+- `docs/SUPPORT_CHAT.md`
+- `docs/AI_CHAT_SETUP.md`
+- `docs/PRODUCTION_DEPLOY.md`
+- `docs/CONTENT_MANAGEMENT.md`
+- `docs/ANALYTICS_SETUP.md`

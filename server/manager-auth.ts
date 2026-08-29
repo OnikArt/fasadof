@@ -1,7 +1,11 @@
+import { getEmployeeByEmail, updateEmployeeLastLogin } from "@/server/employees";
+import { verifyPassword } from "@/server/password";
+
 export type ManagerSession = {
+  id?: string;
   email: string;
   name: string;
-  role: "admin" | "operator";
+  role: "ADMIN" | "MANAGER" | "admin" | "operator";
   exp: number;
 };
 
@@ -13,7 +17,6 @@ export type ManagerAuthEnv = {
 };
 
 export const MANAGER_SESSION_COOKIE = "fasadof_manager_session";
-const HASH_SCHEME = "pbkdf2_sha256";
 const SESSION_TTL_SECONDS = 60 * 60 * 10;
 
 const encoder = new TextEncoder();
@@ -32,16 +35,30 @@ export function isManagerAuthConfigured(env: ManagerAuthEnv) {
 }
 
 export async function authenticateManager(email: string, password: string, env: ManagerAuthEnv) {
+  const employee = await getEmployeeByEmail(email);
+  if (employee) {
+    if (!employee.isActive) return null;
+    const ok = await verifyPassword(password, employee.passwordHash);
+    if (!ok) return null;
+    await updateEmployeeLastLogin(employee.id);
+    return {
+      id: employee.id,
+      email: employee.email,
+      name: employee.name,
+      role: employee.role,
+    };
+  }
+
   if (!isManagerAuthConfigured(env)) return null;
   if (email.trim().toLowerCase() !== env.ADMIN_EMAIL?.trim().toLowerCase()) return null;
-
   const ok = await verifyPassword(password, env.ADMIN_PASSWORD_HASH ?? "");
   if (!ok) return null;
 
   return {
+    id: "env-admin",
     email: env.ADMIN_EMAIL ?? email,
     name: env.ADMIN_NAME || "Менеджер",
-    role: "admin" as const,
+    role: "ADMIN" as const,
   };
 }
 
@@ -107,25 +124,6 @@ export function serializeClearedSessionCookie(requestUrl: string) {
     "SameSite=Lax",
     secure ? "Secure" : "",
   ].filter(Boolean).join("; ");
-}
-
-async function verifyPassword(password: string, encodedHash: string) {
-  const [scheme, iterationsRaw, saltBase64, hashBase64] = encodedHash.split("$");
-  if (scheme !== HASH_SCHEME || !iterationsRaw || !saltBase64 || !hashBase64) return false;
-
-  const iterations = Number(iterationsRaw);
-  if (!Number.isFinite(iterations) || iterations < 100_000) return false;
-
-  const salt = base64UrlDecode(saltBase64);
-  const expected = base64UrlDecode(hashBase64);
-  const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
-    key,
-    expected.byteLength * 8,
-  );
-
-  return constantEqualBytes(new Uint8Array(bits), expected);
 }
 
 async function hmac(payload: string, secret: string) {

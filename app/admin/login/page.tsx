@@ -7,8 +7,8 @@ import { getManagerFromCookieHeader, isManagerAuthConfigured, readManagerAuthEnv
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Вход менеджера",
-  description: "Защищённый вход менеджера ФасадоФ.",
+  title: "Вход в админ-панель",
+  description: "Защищённый вход в админ-панель ФасадоФ.",
   robots: {
     index: false,
     follow: false,
@@ -25,8 +25,8 @@ export default async function AdminLoginPage() {
   return (
     <main className="admin-login-page section">
       <div className="admin-login-copy">
-        <p className="eyebrow">ФасадоФ support</p>
-        <h1>Вход менеджера</h1>
+        <p className="eyebrow">ФасадоФ</p>
+        <h1>Вход в админ-панель</h1>
         <p>
           Доступ защищён server-side session cookie. Первый менеджер создаётся через `npm run admin:create`,
           затем значения добавляются в production env.

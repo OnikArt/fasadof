@@ -41,8 +41,7 @@ AI получает только данные из:
 Provider выбирается через `AI_PROVIDER`. Сейчас поддержаны:
 
 - `gigachat` — production default;
-- `gemini` — fallback при наличии `GEMINI_API_KEY`;
-- knowledge fallback — local/test режим без внешнего AI.
+- knowledge fallback — local/test режим без внешнего AI, если `GIGACHAT_AUTH_KEY` не задан.
 
 ## Troubleshooting
 

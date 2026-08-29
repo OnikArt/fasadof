@@ -22,7 +22,6 @@ export type AIEnv = {
   GIGACHAT_BASE_URL?: string;
   GIGACHAT_AUTH_URL?: string;
   GIGACHAT_TIMEOUT_MS?: string;
-  GEMINI_API_KEY?: string;
 };
 
 type TokenCache = {
@@ -46,9 +45,15 @@ class KnowledgeOnlyProvider implements AIProvider {
     }
 
     if (message.includes("достав")) {
+      if (message.includes("москв") || message.includes("друг") || message.includes("регион")) {
+        return {
+          provider: "knowledge",
+          reply: "Бесплатная доставка действует по Воронежу. Условия доставки в другой город нужно уточнить у менеджера.",
+        };
+      }
       return {
         provider: "knowledge",
-        reply: `${knowledge.delivery}. Режим работы менеджеров: ${knowledge.workingHours}.`,
+        reply: `${knowledge.delivery}. ${knowledge.deliveryScope} Режим работы менеджеров: ${knowledge.workingHours}.`,
       };
     }
 
@@ -168,53 +173,11 @@ class GigaChatProvider implements AIProvider {
   }
 }
 
-class GeminiProvider implements AIProvider {
-  constructor(private readonly apiKey: string) {}
-
-  async sendMessage(input: AIInput) {
-    const context = JSON.stringify(buildKnowledgeBase());
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: `Контекст бренда ФасадоФ: ${context}\n\nВопрос клиента: ${input.message}`,
-                },
-              ],
-            },
-          ],
-        }),
-      },
-    );
-
-    if (!response.ok) throw new Error("Gemini API unavailable");
-
-    const payload = (await response.json()) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
-    };
-
-    return {
-      provider: "gemini",
-      reply: payload.candidates?.[0]?.content?.parts?.[0]?.text ?? "Точную информацию уточнит менеджер. Передать ему ваш вопрос?",
-    };
-  }
-}
-
 export function createAIProvider(env: AIEnv): AIProvider {
   const provider = (env.AI_PROVIDER || "gigachat").toLowerCase();
 
   if (provider === "gigachat" && env.GIGACHAT_AUTH_KEY) {
     return new GigaChatProvider({ ...env, GIGACHAT_AUTH_KEY: env.GIGACHAT_AUTH_KEY });
-  }
-
-  if (provider === "gemini" && env.GEMINI_API_KEY) {
-    return new GeminiProvider(env.GEMINI_API_KEY);
   }
 
   return new KnowledgeOnlyProvider();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { BUSINESS } from "@/config/business";
 import { analytics } from "@/features/analytics/analytics";
 
@@ -53,7 +54,9 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <div className="header-shell">
-        <a className="brand" href="/" onClick={closeMenu}>ФАСАДОФ</a>
+        <a className="brand" href="/" onClick={closeMenu} aria-label="ФасадоФ - на главную">
+          <BrandLogo compact />
+        </a>
         <nav className="desktop-nav" aria-label="Основная навигация">
           {navItems.map((item) => (
             <a href={item.href} key={item.href}>{item.label}</a>
@@ -69,15 +72,26 @@ export function SiteHeader() {
           onClick={() => setOpen((current) => !current)}
           type="button"
         >
-          <span>{open ? "Закрыть" : "Меню"}</span>
+          <span className="menu-button-icon" aria-hidden="true">
+            {open ? (
+              <svg viewBox="0 0 24 24" focusable="false"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" focusable="false"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+            )}
+          </span>
+          <span className="visually-hidden">{open ? "Закрыть меню" : "Открыть меню"}</span>
         </button>
       </div>
 
       <div className={open ? "mobile-menu open" : "mobile-menu"} id="mobile-menu" aria-hidden={!open}>
         <div className="mobile-menu-panel" role="dialog" aria-modal="true" aria-label="Меню сайта">
           <div className="mobile-menu-top">
-            <a href="/" onClick={closeMenu}>ФАСАДОФ</a>
-            <button ref={closeRef} onClick={closeMenu} type="button" aria-label="Закрыть меню">X</button>
+            <a href="/" onClick={closeMenu} aria-label="ФасадоФ - на главную">
+              <BrandLogo compact />
+            </a>
+            <button ref={closeRef} onClick={closeMenu} type="button" aria-label="Закрыть меню">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
           </div>
           <nav aria-label="Мобильная навигация">
             {navItems.map((item, index) => (
