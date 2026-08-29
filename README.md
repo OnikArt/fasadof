@@ -29,6 +29,22 @@ npm run build
 npm run preview
 ```
 
+## Deploy
+
+The current production target is a fullstack Vinext service, so deploy the GitHub repository to Railway or the existing Cloudflare/Sites worker environment.
+
+For Railway:
+
+```text
+Build Command: npm ci && npm run build
+Start Command: npm run start
+Healthcheck Path: /health
+```
+
+These settings are also stored in `railway.json`.
+
+Vercel is not supported by this repository without a separate Nitro migration. A plain Vercel import can return `404: NOT_FOUND` because Vinext's `dist/` output needs the `vinext start` runtime.
+
 ## Architecture
 
 - `app/` - routes, metadata and API endpoints.
@@ -81,5 +97,6 @@ Required production integrations:
 - `docs/SUPPORT_CHAT.md`
 - `docs/AI_CHAT_SETUP.md`
 - `docs/PRODUCTION_DEPLOY.md`
+- `docs/VERCEL_RAILWAY.md`
 - `docs/CONTENT_MANAGEMENT.md`
 - `docs/ANALYTICS_SETUP.md`
