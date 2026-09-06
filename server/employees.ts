@@ -1,5 +1,6 @@
 import { hashPassword } from "@/server/password";
 import { listChatRatings, listConversations } from "@/server/support-store";
+import { getDatabase } from "@/server/database";
 
 export type EmployeeRole = "ADMIN" | "MANAGER";
 
@@ -45,16 +46,6 @@ function memoryStore() {
   return globalStore.__fasadofEmployees;
 }
 
-async function getD1() {
-  try {
-    const cloudflareWorkers = "cloudflare:workers";
-    const mod = await import(/* @vite-ignore */ cloudflareWorkers) as { env?: { DB?: D1DatabaseLike } };
-    return mod.env?.DB;
-  } catch {
-    return undefined;
-  }
-}
-
 export async function listEmployees(env = process.env) {
   const employees = await readEmployees();
   const withStats = await Promise.all(employees.map(toPublicEmployee));
@@ -81,7 +72,7 @@ export async function listEmployees(env = process.env) {
 
 export async function getEmployeeByEmail(email: string) {
   const normalized = email.trim().toLowerCase();
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureEmployeeSchema(db);
     const row = await db.prepare("SELECT * FROM operators WHERE lower(email) = lower(?) LIMIT 1").bind(normalized).first<D1Employee>();
@@ -105,7 +96,7 @@ export async function createEmployee(input: { name: string; email: string; passw
     lastLoginAt: null,
   };
 
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureEmployeeSchema(db);
     await db.prepare(
@@ -122,7 +113,7 @@ export async function createEmployee(input: { name: string; email: string; passw
 }
 
 export async function updateEmployee(id: string, input: Partial<{ name: string; email: string; role: EmployeeRole; isActive: boolean; password: string }>) {
-  const db = await getD1();
+  const db = await getDatabase();
   const current = await getEmployeeById(id);
   if (!current) return null;
 
@@ -151,7 +142,7 @@ export async function updateEmployee(id: string, input: Partial<{ name: string; 
 
 export async function updateEmployeeLastLogin(id: string) {
   const now = new Date().toISOString();
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureEmployeeSchema(db);
     await db.prepare("UPDATE operators SET last_login_at = ?, updated_at = ? WHERE id = ?").bind(now, now, id).run();
@@ -166,7 +157,7 @@ export async function updateEmployeeLastLogin(id: string) {
 }
 
 async function readEmployees() {
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureEmployeeSchema(db);
     const result = await db.prepare("SELECT * FROM operators ORDER BY created_at DESC").all<D1Employee>();
@@ -177,7 +168,7 @@ async function readEmployees() {
 }
 
 async function getEmployeeById(id: string) {
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureEmployeeSchema(db);
     const row = await db.prepare("SELECT * FROM operators WHERE id = ?").bind(id).first<D1Employee>();

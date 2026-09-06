@@ -114,7 +114,7 @@ Important: Railway can run the fullstack app, admin, forms and AI runtime, but i
 
 Railway domain:
 
-Start with the generated `*.up.railway.app` URL. After frontend production is confirmed, attach an API domain such as `api.example.ru` only if the frontend/backend split is introduced.
+The production target is the VPS behind `https://fasadof36.ru`. Railway remains optional staging infrastructure and is not required by the live site.
 
 ## Vercel
 

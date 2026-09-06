@@ -7,6 +7,23 @@ import { formatPrice, productCategories, type Product, type ProductCategory } fr
 type View = "dashboard" | "products" | "leads" | "employees" | "analytics" | "settings";
 type ProductStatus = "published" | "hidden" | "archived";
 type LeadStatus = "NEW" | "IN_PROGRESS" | "DONE";
+type VkSyncStatus = "synced" | "create" | "enrich" | "difference" | "confirm" | "site_only" | "error";
+
+type VkSyncRow = {
+  key: string;
+  photo: string;
+  siteProductId?: string;
+  siteName: string;
+  vkMarketItemId?: number;
+  vkName: string;
+  sitePrice?: number;
+  vkPrice?: number;
+  score?: number;
+  status: VkSyncStatus;
+  action: string;
+  missingFields: string[];
+  candidates?: { id: string; name: string; score: number }[];
+};
 
 type AdminManager = {
   id?: string;
@@ -105,6 +122,11 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
   const [productSearch, setProductSearch] = useState("");
   const [productCategory, setProductCategory] = useState<ProductCategory | "all">("all");
   const [productStatus, setProductStatus] = useState<ProductStatus | "all">("all");
+  const [vkSyncRows, setVkSyncRows] = useState<VkSyncRow[] | null>(null);
+  const [vkConfirmations, setVkConfirmations] = useState<Record<string, string>>({});
+  const [vkPriceStrategy, setVkPriceStrategy] = useState<"preserve-site" | "use-vk">("preserve-site");
+  const [integrationStatus, setIntegrationStatus] = useState("");
+  const [integrationBusy, setIntegrationBusy] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [leads, setLeads] = useState<AdminLead[]>([]);
   const [ratings, setRatings] = useState<ChatRating[]>([]);
@@ -276,6 +298,73 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
     }
   }
 
+  async function previewVkSync() {
+    setError("");
+    setIntegrationStatus("");
+    setIntegrationBusy(true);
+    try {
+      const response = await fetch("/api/admin/integrations/vk/sync", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action: "preview" }),
+      });
+      const payload = await response.json() as { rows?: VkSyncRow[]; error?: string };
+      if (!response.ok || !payload.rows) throw new Error(payload.error || "VK preview failed");
+      setVkSyncRows(payload.rows);
+      setVkConfirmations({});
+      setIntegrationStatus(`Сравнение готово: ${payload.rows.length} строк.`);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Не удалось получить каталог VK.");
+    } finally {
+      setIntegrationBusy(false);
+    }
+  }
+
+  async function applyVkCatalogSync() {
+    setError("");
+    setIntegrationStatus("");
+    setIntegrationBusy(true);
+    try {
+      const response = await fetch("/api/admin/integrations/vk/sync", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action: "apply", confirmations: vkConfirmations, priceStrategy: vkPriceStrategy }),
+      });
+      const payload = await response.json() as {
+        products?: AdminProduct[];
+        summary?: { created: number; enriched: number; updated: number; unchanged: number; errors: number };
+        error?: string;
+      };
+      if (!response.ok || !payload.summary) throw new Error(payload.error || "VK sync failed");
+      if (payload.products) setProducts(payload.products);
+      const value = payload.summary;
+      setIntegrationStatus(`Создано: ${value.created}. Дополнено: ${value.enriched}. Обновлено: ${value.updated}. Без изменений: ${value.unchanged}. Ошибок: ${value.errors}.`);
+      setVkSyncRows(null);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Синхронизация VK не выполнена.");
+    } finally {
+      setIntegrationBusy(false);
+    }
+  }
+
+  async function testMaxConnection() {
+    setError("");
+    setIntegrationStatus("");
+    setIntegrationBusy(true);
+    try {
+      const response = await fetch("/api/admin/integrations/max/test", { method: "POST", credentials: "include" });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "MAX test failed");
+      setIntegrationStatus("Тестовое сообщение отправлено в MAX.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Не удалось отправить тестовое сообщение MAX.");
+    } finally {
+      setIntegrationBusy(false);
+    }
+  }
+
   return (
     <div className="support-admin">
       <header className="admin-mobile-topbar">
@@ -392,8 +481,65 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
               <p className="eyebrow">Каталог</p>
               <h2>Товары</h2>
             </div>
-            <button className="btn primary" type="button" onClick={() => setProductForm(emptyProductForm())}>+ Добавить товар</button>
+            <div className="admin-header-actions">
+              <button className="btn secondary" disabled={integrationBusy} type="button" onClick={() => void previewVkSync()}>
+                {integrationBusy ? "Сверяем..." : "Синхронизировать с VK"}
+              </button>
+              <button className="btn primary" type="button" onClick={() => setProductForm(emptyProductForm())}>+ Добавить товар</button>
+            </div>
           </header>
+          {vkSyncRows && (
+            <section className="vk-sync-preview" aria-label="Предпросмотр синхронизации VK">
+              <div className="vk-sync-toolbar">
+                <div>
+                  <strong>Предпросмотр VK</strong>
+                  <span>Ничего не записано. Проверьте совпадения и стратегию цены.</span>
+                </div>
+                <label>
+                  Цена
+                  <select value={vkPriceStrategy} onChange={(event) => setVkPriceStrategy(event.target.value as "preserve-site" | "use-vk")}>
+                    <option value="preserve-site">Сохранить цену сайта</option>
+                    <option value="use-vk">Принять цену VK</option>
+                  </select>
+                </label>
+                <button className="btn primary" disabled={integrationBusy} type="button" onClick={() => void applyVkCatalogSync()}>
+                  Применить синхронизацию
+                </button>
+              </div>
+              <div className="vk-sync-list">
+                <div className="vk-sync-row vk-sync-head" aria-hidden="true">
+                  <span>Фото</span><span>Название сайта</span><span>Название VK</span><span>Цена сайта</span><span>Цена VK</span><span>Статус</span><span>Действие</span>
+                </div>
+                {vkSyncRows.map((row) => (
+                  <article className={`vk-sync-row status-${row.status}`} key={row.key}>
+                    <div className="vk-sync-photo" data-label="Фото">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {row.photo ? <img src={row.photo} alt="" loading="lazy" /> : <span>—</span>}
+                    </div>
+                    <span data-label="Название сайта">{row.siteName}</span>
+                    <span data-label="Название VK">{row.vkName}</span>
+                    <span data-label="Цена сайта">{formatSyncPrice(row.sitePrice)}</span>
+                    <span data-label="Цена VK">{formatSyncPrice(row.vkPrice)}</span>
+                    <strong data-label="Статус">{syncStatusLabel(row.status)}</strong>
+                    <div data-label="Действие">
+                      {row.status === "confirm" && row.vkMarketItemId ? (
+                        <select
+                          aria-label={`Сопоставление для ${row.vkName}`}
+                          value={vkConfirmations[String(row.vkMarketItemId)] ?? ""}
+                          onChange={(event) => setVkConfirmations((current) => ({ ...current, [String(row.vkMarketItemId)]: event.target.value }))}
+                        >
+                          <option value="">Выберите товар</option>
+                          {row.candidates?.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name} ({Math.round(candidate.score * 100)}%)</option>)}
+                          <option value="create">Создать новую карточку</option>
+                        </select>
+                      ) : <span>{row.action}</span>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+          {integrationStatus && <p className="admin-integration-status" role="status">{integrationStatus}</p>}
           <div className="product-admin-layout">
             <div className="product-admin-list">
               <div className="product-admin-filters">
@@ -510,9 +656,15 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
           <header><div><p className="eyebrow">Интеграции</p><h2>Настройки</h2></div></header>
           <div className="admin-settings-grid">
             <article><strong>Chat2Desk</strong><span>Включён через `NEXT_PUBLIC_CHAT2DESK_WIDGET_TOKEN`.</span></article>
-            <article><strong>MAX</strong><span>Отключён до прохождения модерации официального канала.</span></article>
+            <article>
+              <strong>MAX</strong>
+              <span>Серверные уведомления используют `MAX_BOT_TOKEN` и `MAX_MANAGER_CHAT_ID`.</span>
+              <button className="btn secondary" disabled={integrationBusy} onClick={() => void testMaxConnection()} type="button">Отправить тестовое сообщение</button>
+            </article>
+            <article><strong>VK</strong><span>Callback URL: `https://fasadof36.ru/api/integrations/vk/callback`.</span></article>
             <article><strong>Метрика</strong><span>VK pixel удалён, остаётся Яндекс Метрика по counter id.</span></article>
           </div>
+          {integrationStatus && <p className="admin-integration-status" role="status">{integrationStatus}</p>}
         </section>
       )}
 
@@ -608,4 +760,20 @@ function formatDate(value?: string) {
 
 function statusLabel(status: LeadStatus) {
   return leadStatuses.find((item) => item.value === status)?.label ?? "Новая";
+}
+
+function formatSyncPrice(value?: number) {
+  return value ? `${value.toLocaleString("ru-RU")} ₽` : "—";
+}
+
+function syncStatusLabel(status: VkSyncStatus) {
+  return ({
+    synced: "✓ Уже синхронизирован",
+    create: "+ Будет создан",
+    enrich: "↓ Будет дополнен",
+    difference: "~ Найдено расхождение",
+    confirm: "? Требуется подтверждение",
+    site_only: "• Только на сайте",
+    error: "! Ошибка",
+  } as Record<VkSyncStatus, string>)[status];
 }

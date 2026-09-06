@@ -1,5 +1,6 @@
 import { normalizeLeadPayload, validateLead, type LeadPayload } from "@/server/leads";
 import { persistLead } from "@/server/lead-store";
+import { notifyLeadInMax } from "@/server/notifications";
 import { rateLimit } from "@/server/rate-limit";
 
 export async function POST(request: Request) {
@@ -20,18 +21,24 @@ export async function POST(request: Request) {
 
     const lead = normalizeLeadPayload(payload as LeadPayload);
     const persisted = await persistLead(lead);
+    if (!persisted.persisted) {
+      return Response.json({ error: "Заявка не сохранена. Повторите отправку." }, { status: 503 });
+    }
+    const max = await notifyLeadInMax(lead);
 
     return Response.json(
       {
         ok: true,
         integration: {
           persisted: persisted.persisted,
-          note: persisted.persisted ? "Заявка сохранена." : "D1 недоступен: заявка обработана без постоянного хранения.",
+          maxNotified: max.sent,
+          note: max.sent ? "Заявка сохранена и отправлена в MAX." : "Заявка сохранена. MAX временно недоступен.",
         },
       },
       { status: 201 },
     );
-  } catch {
+  } catch (error) {
+    console.error("Lead API failed", error);
     return Response.json({ error: "Lead API unavailable" }, { status: 500 });
   }
 }

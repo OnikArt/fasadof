@@ -1,3 +1,5 @@
+import { getDatabase } from "@/server/database";
+
 export type ChatStatus = "AI" | "WAITING_OPERATOR" | "OPERATOR" | "CLOSED";
 export type ChatRole = "user" | "assistant" | "operator" | "system";
 
@@ -74,18 +76,8 @@ function memoryStore(): MemoryStore {
 const OPERATOR_PRESENCE_TTL_MS = 45_000;
 const OPERATOR_WAIT_TIMEOUT_MS = Number(process.env.MANAGER_WAIT_TIMEOUT_MS || 5 * 60_000);
 
-async function getD1() {
-  try {
-    const cloudflareWorkers = "cloudflare:workers";
-    const mod = await import(/* @vite-ignore */ cloudflareWorkers) as { env?: { DB?: D1DatabaseLike } };
-    return mod.env?.DB;
-  } catch {
-    return undefined;
-  }
-}
-
 export async function getOrCreateCustomerSession(input: CustomerSessionInput) {
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureD1Schema(db);
     if (input.sessionId && input.customerToken) {
@@ -128,7 +120,7 @@ export async function getOrCreateCustomerSession(input: CustomerSessionInput) {
 
 export async function getCustomerSession(sessionId: string, customerToken: string) {
   await resumeTimedOutWaitingSessions();
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureD1Schema(db);
     const session = await db
@@ -156,7 +148,7 @@ export async function appendMessage(input: {
     createdAt: new Date().toISOString(),
   };
 
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureD1Schema(db);
     await db.prepare(
@@ -178,7 +170,7 @@ export async function listCustomerMessages(sessionId: string, customerToken: str
 }
 
 export async function listMessages(sessionId: string) {
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureD1Schema(db);
     const result = await db
@@ -204,7 +196,7 @@ export async function requestOperator(sessionId: string) {
 
 export async function resumeTimedOutWaitingSessions() {
   const cutoff = new Date(Date.now() - OPERATOR_WAIT_TIMEOUT_MS).toISOString();
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureD1Schema(db);
     const result = await db
@@ -236,7 +228,7 @@ export async function resumeTimedOutWaitingSessions() {
 
 export async function recordManagerHeartbeat(manager: { email: string; name: string }) {
   const now = new Date().toISOString();
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureD1Schema(db);
     await db
@@ -250,7 +242,7 @@ export async function recordManagerHeartbeat(manager: { email: string; name: str
 
 export async function hasOnlineManagers() {
   const cutoff = new Date(Date.now() - OPERATOR_PRESENCE_TTL_MS).toISOString();
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureD1Schema(db);
     const row = await db
@@ -265,7 +257,7 @@ export async function hasOnlineManagers() {
 
 export async function listConversations(status?: ChatStatus | "ALL") {
   await resumeTimedOutWaitingSessions();
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureD1Schema(db);
     const result = status && status !== "ALL"
@@ -287,7 +279,7 @@ export async function listConversations(status?: ChatStatus | "ALL") {
 }
 
 export async function getConversation(sessionId: string) {
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureD1Schema(db);
     const session = await db.prepare("SELECT * FROM chat_sessions WHERE id = ?").bind(sessionId).first<D1ChatSession>();
@@ -298,7 +290,7 @@ export async function getConversation(sessionId: string) {
 }
 
 export async function takeConversation(sessionId: string, manager: { email: string; name: string }) {
-  const db = await getD1();
+  const db = await getDatabase();
   const now = new Date().toISOString();
   if (db) {
     await ensureD1Schema(db);
@@ -340,7 +332,7 @@ export async function addChatRating(input: { conversationId: string; customerTok
     createdAt: new Date().toISOString(),
   };
 
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureD1Schema(db);
     await db.prepare(
@@ -354,7 +346,7 @@ export async function addChatRating(input: { conversationId: string; customerTok
 }
 
 export async function listChatRatings(filter?: { rating?: number; employeeId?: string }) {
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureD1Schema(db);
     const result = await db.prepare("SELECT * FROM chat_ratings ORDER BY created_at DESC LIMIT 200").all<D1ChatRating>();
@@ -369,7 +361,7 @@ export async function listChatRatings(filter?: { rating?: number; employeeId?: s
 }
 
 async function getRating(conversationId: string) {
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureD1Schema(db);
     const row = await db.prepare("SELECT * FROM chat_ratings WHERE conversation_id = ?").bind(conversationId).first<D1ChatRating>();
@@ -380,7 +372,7 @@ async function getRating(conversationId: string) {
 }
 
 async function closeSession(sessionId: string, managerName: string) {
-  const db = await getD1();
+  const db = await getDatabase();
   const now = new Date().toISOString();
   if (db) {
     await ensureD1Schema(db);
@@ -398,7 +390,7 @@ async function closeSession(sessionId: string, managerName: string) {
 }
 
 export async function updateSessionStatus(sessionId: string, status: ChatStatus) {
-  const db = await getD1();
+  const db = await getDatabase();
   const now = new Date().toISOString();
   if (db) {
     await ensureD1Schema(db);
@@ -414,7 +406,7 @@ export async function updateSessionStatus(sessionId: string, status: ChatStatus)
 }
 
 async function touchSession(sessionId: string) {
-  const db = await getD1();
+  const db = await getDatabase();
   const now = new Date().toISOString();
   if (db) {
     await ensureD1Schema(db);

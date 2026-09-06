@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 
 const command = process.argv[2] ?? "dev";
-const env = { ...process.env, ...readDotEnv() };
+const env = { ...readDotEnv(), ...process.env };
 const args = [command];
 const executable = process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "vinext";
 

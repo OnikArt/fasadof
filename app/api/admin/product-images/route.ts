@@ -1,6 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { getManagerFromCookieHeader } from "@/server/manager-auth";
+import { persistUploadedProductImage } from "@/server/media-storage";
 
 const MAX_IMAGE_BYTES = 1_800_000;
 const allowedTypes = new Map([
@@ -23,13 +22,11 @@ export async function POST(request: Request) {
   if (file.size > MAX_IMAGE_BYTES) return Response.json({ error: "image must be less than 1.8 MB" }, { status: 400 });
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const uploadsDir = join(process.cwd(), "public", "uploads", "products");
   const filename = `${Date.now()}-${safeName(file.name).replace(/\.[^.]+$/, "")}.${extension}`;
 
   try {
-    await mkdir(uploadsDir, { recursive: true });
-    await writeFile(join(uploadsDir, filename), bytes);
-    return Response.json({ url: `/uploads/products/${filename}` }, { status: 201 });
+    const url = await persistUploadedProductImage(filename, bytes);
+    return Response.json({ url }, { status: 201 });
   } catch {
     return Response.json({ error: "local upload storage is unavailable; use an image URL instead" }, { status: 501 });
   }

@@ -1,5 +1,6 @@
 import { createAIProvider, type AIEnv } from "@/server/ai";
 import { rateLimit } from "@/server/rate-limit";
+import { notifyChatMessageInMax, notifyOperatorRequestInMax } from "@/server/notifications";
 import {
   appendMessage,
   getCustomerSession,
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
 
     if (action === "request_operator") {
       await requestOperator(session.id);
+      await notifyOperatorRequestInMax({ sessionId: session.id, page: session.page });
       const messages = await listCustomerMessages(session.id, session.customerToken);
       return Response.json({
         session: { ...session, status: "WAITING_OPERATOR" },
@@ -83,6 +85,7 @@ export async function POST(request: Request) {
     }
 
     await appendMessage({ sessionId: session.id, role: "user", content: payload.message.trim() });
+    await notifyChatMessageInMax({ sessionId: session.id, message: payload.message.trim(), page: session.page });
 
     if (session.status === "WAITING_OPERATOR" || session.status === "OPERATOR" || session.status === "CLOSED") {
       const messages = await listCustomerMessages(session.id, session.customerToken);

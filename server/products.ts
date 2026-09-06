@@ -1,4 +1,5 @@
 import { products as seedProducts, type Product, type ProductCategory } from "@/data/products";
+import { getDatabase } from "@/server/database";
 
 export type ProductStatus = "published" | "hidden" | "archived";
 
@@ -12,6 +13,7 @@ export type ProductInput = {
   description: string;
   fullDescription?: string;
   priceFrom?: number | null;
+  oldPrice?: number | null;
   pricePrefix?: string;
   priceUnit?: string;
   priceOnRequest?: boolean;
@@ -22,6 +24,10 @@ export type ProductInput = {
   application?: string;
   popular?: boolean;
   status?: ProductStatus;
+  vkOwnerId?: number | null;
+  vkMarketItemId?: number | null;
+  vkUrl?: string;
+  vkSyncedAt?: string;
 };
 
 type D1PreparedStatement = {
@@ -63,18 +69,8 @@ function memoryStore() {
   return globalStore.__fasadofProducts;
 }
 
-async function getD1() {
-  try {
-    const cloudflareWorkers = "cloudflare:workers";
-    const mod = await import(/* @vite-ignore */ cloudflareWorkers) as { env?: { DB?: D1DatabaseLike } };
-    return mod.env?.DB;
-  } catch {
-    return undefined;
-  }
-}
-
 export async function listProducts(options: { includeHidden?: boolean; status?: ProductStatus | "all" } = {}) {
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureProductSchema(db);
     await seedD1Products(db);
@@ -103,13 +99,13 @@ export async function saveProduct(input: ProductInput, manager: { email: string;
   const existing = input.id ? await getProductById(input.id) : null;
   const product = normalizeProductInput(input, existing, manager, now);
 
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureProductSchema(db);
     await seedD1Products(db);
     if (existing) {
       await db.prepare(
-        "UPDATE products SET slug = ?, category = ?, material = ?, name = ?, short_name = ?, description = ?, full_description = ?, price_from = ?, price_prefix = ?, price_unit = ?, price_on_request = ?, image = ?, texture = ?, gallery = ?, features = ?, application = ?, popular = ?, status = ?, updated_by = ?, updated_at = ? WHERE id = ?",
+        "UPDATE products SET slug = ?, category = ?, material = ?, name = ?, short_name = ?, description = ?, full_description = ?, price_from = ?, old_price = ?, price_prefix = ?, price_unit = ?, price_on_request = ?, image = ?, texture = ?, gallery = ?, features = ?, application = ?, popular = ?, status = ?, vk_owner_id = ?, vk_market_item_id = ?, vk_url = ?, vk_synced_at = ?, updated_by = ?, updated_at = ? WHERE id = ?",
       ).bind(
         product.slug,
         product.category,
@@ -119,6 +115,7 @@ export async function saveProduct(input: ProductInput, manager: { email: string;
         product.description,
         product.fullDescription ?? product.description,
         product.priceFrom ?? null,
+        product.oldPrice ?? null,
         product.pricePrefix ?? "от",
         product.priceUnit ?? null,
         product.priceOnRequest ? 1 : 0,
@@ -129,13 +126,17 @@ export async function saveProduct(input: ProductInput, manager: { email: string;
         product.application ?? null,
         product.popular ? 1 : 0,
         product.status ?? "published",
+        product.vkOwnerId ?? null,
+        product.vkMarketItemId ?? null,
+        product.vkUrl ?? null,
+        product.vkSyncedAt ?? null,
         product.updatedBy,
         product.updatedAt,
         product.id,
       ).run();
     } else {
       await db.prepare(
-        "INSERT INTO products (id, slug, category, material, name, short_name, description, full_description, price_from, price_prefix, price_unit, price_on_request, image, texture, gallery, features, application, popular, status, created_by, updated_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO products (id, slug, category, material, name, short_name, description, full_description, price_from, old_price, price_prefix, price_unit, price_on_request, image, texture, gallery, features, application, popular, status, vk_owner_id, vk_market_item_id, vk_url, vk_synced_at, created_by, updated_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       ).bind(
         product.id,
         product.slug,
@@ -146,6 +147,7 @@ export async function saveProduct(input: ProductInput, manager: { email: string;
         product.description,
         product.fullDescription ?? product.description,
         product.priceFrom ?? null,
+        product.oldPrice ?? null,
         product.pricePrefix ?? "от",
         product.priceUnit ?? null,
         product.priceOnRequest ? 1 : 0,
@@ -156,6 +158,10 @@ export async function saveProduct(input: ProductInput, manager: { email: string;
         product.application ?? null,
         product.popular ? 1 : 0,
         product.status ?? "published",
+        product.vkOwnerId ?? null,
+        product.vkMarketItemId ?? null,
+        product.vkUrl ?? null,
+        product.vkSyncedAt ?? null,
         product.createdBy,
         product.updatedBy,
         product.createdAt,
@@ -180,7 +186,7 @@ export async function setProductStatus(id: string, status: ProductStatus, manage
 }
 
 export async function deleteProduct(id: string) {
-  const db = await getD1();
+  const db = await getDatabase();
   if (db) {
     await ensureProductSchema(db);
     await seedD1Products(db);
@@ -194,8 +200,8 @@ export async function deleteProduct(id: string) {
   return store.products.length < before;
 }
 
-async function getProductById(id: string) {
-  const db = await getD1();
+export async function getProductById(id: string) {
+  const db = await getDatabase();
   if (db) {
     await ensureProductSchema(db);
     await seedD1Products(db);
@@ -228,6 +234,7 @@ function normalizeProductInput(input: ProductInput, existing: Product | null, ma
     description: input.description.trim(),
     fullDescription: input.fullDescription?.trim() || input.description.trim(),
     priceFrom: input.priceOnRequest ? undefined : normalizePrice(input.priceFrom),
+    oldPrice: normalizePrice(input.oldPrice) ?? existing?.oldPrice,
     pricePrefix: input.pricePrefix?.trim() || "от",
     priceUnit: input.priceOnRequest ? undefined : input.priceUnit?.trim() || undefined,
     priceOnRequest: Boolean(input.priceOnRequest),
@@ -238,6 +245,10 @@ function normalizeProductInput(input: ProductInput, existing: Product | null, ma
     application: input.application?.trim() || undefined,
     popular: Boolean(input.popular),
     status: input.status ?? existing?.status ?? "published",
+    vkOwnerId: input.vkOwnerId ?? existing?.vkOwnerId,
+    vkMarketItemId: input.vkMarketItemId ?? existing?.vkMarketItemId,
+    vkUrl: input.vkUrl?.trim() || existing?.vkUrl,
+    vkSyncedAt: input.vkSyncedAt ?? existing?.vkSyncedAt,
     createdBy: existing?.createdBy ?? manager.email,
     updatedBy: manager.email,
     createdAt: existing?.createdAt ?? now,
@@ -262,12 +273,29 @@ async function ensureProductSchema(db: D1DatabaseLike) {
   const store = memoryStore();
   if (store.schemaReady) return;
   await db.batch([
-    db.prepare("CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE, category TEXT NOT NULL, material TEXT NOT NULL, name TEXT NOT NULL, short_name TEXT, description TEXT NOT NULL, full_description TEXT, price_from INTEGER, price_prefix TEXT NOT NULL DEFAULT 'от', price_unit TEXT, price_on_request INTEGER NOT NULL DEFAULT 0, image TEXT NOT NULL DEFAULT '', texture TEXT NOT NULL DEFAULT 'custom', gallery TEXT NOT NULL DEFAULT '[]', features TEXT NOT NULL DEFAULT '[]', application TEXT, popular INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'published', created_by TEXT, updated_by TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE, category TEXT NOT NULL, material TEXT NOT NULL, name TEXT NOT NULL, short_name TEXT, description TEXT NOT NULL, full_description TEXT, price_from INTEGER, old_price INTEGER, price_prefix TEXT NOT NULL DEFAULT 'от', price_unit TEXT, price_on_request INTEGER NOT NULL DEFAULT 0, image TEXT NOT NULL DEFAULT '', texture TEXT NOT NULL DEFAULT 'custom', gallery TEXT NOT NULL DEFAULT '[]', features TEXT NOT NULL DEFAULT '[]', application TEXT, popular INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'published', vk_owner_id INTEGER, vk_market_item_id INTEGER, vk_url TEXT, vk_synced_at TEXT, created_by TEXT, updated_by TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
     db.prepare("CREATE TABLE IF NOT EXISTS product_change_log (id TEXT PRIMARY KEY, product_id TEXT NOT NULL, action TEXT NOT NULL, manager_email TEXT NOT NULL, manager_name TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_products_status_updated ON products(status, updated_at)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_products_category_status ON products(category, status)"),
   ]);
+  await ensureProductColumns(db);
   store.schemaReady = true;
+}
+
+async function ensureProductColumns(db: D1DatabaseLike) {
+  const result = await db.prepare("PRAGMA table_info(products)").all<{ name: string }>();
+  const columns = new Set((result.results ?? []).map((column) => column.name));
+  const additions = [
+    ["old_price", "INTEGER"],
+    ["vk_owner_id", "INTEGER"],
+    ["vk_market_item_id", "INTEGER"],
+    ["vk_url", "TEXT"],
+    ["vk_synced_at", "TEXT"],
+  ] as const;
+  for (const [name, type] of additions) {
+    if (!columns.has(name)) await db.prepare(`ALTER TABLE products ADD COLUMN ${name} ${type}`).run();
+  }
+  await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_vk_market_item ON products(vk_owner_id, vk_market_item_id) WHERE vk_market_item_id IS NOT NULL").run();
 }
 
 async function seedD1Products(db: D1DatabaseLike) {
@@ -322,6 +350,7 @@ type D1Product = {
   description: string;
   full_description: string | null;
   price_from: number | null;
+  old_price: number | null;
   price_prefix: string | null;
   price_unit: string | null;
   price_on_request: number;
@@ -332,6 +361,10 @@ type D1Product = {
   application: string | null;
   popular: number;
   status: ProductStatus;
+  vk_owner_id: number | null;
+  vk_market_item_id: number | null;
+  vk_url: string | null;
+  vk_synced_at: string | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
@@ -349,6 +382,7 @@ function mapD1Product(row: D1Product): Product {
     description: row.description,
     fullDescription: row.full_description ?? undefined,
     priceFrom: row.price_from ?? undefined,
+    oldPrice: row.old_price ?? undefined,
     pricePrefix: row.price_prefix ?? "от",
     priceUnit: row.price_unit ?? undefined,
     priceOnRequest: row.price_on_request === 1,
@@ -359,6 +393,10 @@ function mapD1Product(row: D1Product): Product {
     application: row.application ?? undefined,
     popular: row.popular === 1,
     status: row.status,
+    vkOwnerId: row.vk_owner_id ?? undefined,
+    vkMarketItemId: row.vk_market_item_id ?? undefined,
+    vkUrl: row.vk_url ?? undefined,
+    vkSyncedAt: row.vk_synced_at ?? undefined,
     createdBy: row.created_by ?? undefined,
     updatedBy: row.updated_by ?? undefined,
     createdAt: row.created_at,

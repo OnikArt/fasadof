@@ -1,14 +1,14 @@
 # ФасадоФ
 
-Production-oriented site for the Russian brand «ФасадоФ»: furniture fronts, countertops, catalogue pages, lead forms, SEO, attribution, GigaChat-powered support chat, manager takeover and VK lead notifications.
+Production site for the Russian brand «ФасадоФ»: furniture fronts, countertops, catalogue management, lead forms, GigaChat support, manager takeover, MAX notifications and safe VK Market synchronization.
 
 ## Stack
 
 - React 19
 - TypeScript
 - Vite / vinext
-- Cloudflare Worker-compatible runtime through Sites
-- Drizzle schema for D1-compatible persistence
+- Vinext server runtime on Node.js 22
+- Persistent SQLite storage with versioned migrations
 
 ## Local Start
 
@@ -29,40 +29,28 @@ npm run build
 npm run preview
 ```
 
-## Deploy
+## Production Deploy
 
-The current production target is a fullstack Vinext service, so deploy the GitHub repository to Railway or the existing Cloudflare/Sites worker environment.
+Production runs at `https://fasadof36.ru` on Ubuntu 24.04 behind Nginx, with the Vinext Node.js service managed by `fasadof.service` on `127.0.0.1:3000`.
 
-For Railway:
-
-```text
-Build Command: npm run build
-Start Command: npm run start
-Healthcheck Path: /health
+```bash
+cd /var/www/fasadof/fasadof
+./scripts/deploy-vps.sh
 ```
 
-These settings are also stored in `railway.json`.
-
-For Vercel, use the committed `vercel.json`:
-
-```text
-Build Command: npm run build:vercel
-Framework Preset: Other
-```
-
-The Vercel build uses the Nitro adapter and generates `.vercel/output`. Do not set a manual Output Directory to `dist`, `dist/client` or `.output`.
+The script performs a fast-forward pull, clean `npm ci`, typecheck, safe migrations, build, systemd restart and health check. See `docs/VPS_DEPLOY.md` for the one-time server setup and rollback procedure.
 
 ## Architecture
 
 - `app/` - routes, metadata and API endpoints.
 - `components/` - header, home experience, product cards, lead form, support chat and admin UI.
 - `config/business.ts` - centralized phone, email, address, delivery, working hours and social links.
-- `data/products.ts` - catalogue data and prices.
+- `data/products.ts` - initial catalogue seed data.
 - `features/analytics/` - browser analytics event abstraction.
 - `features/attribution/` - first-touch and last-touch UTM/referrer capture.
 - `features/phone/` - shared Russian phone formatting, normalization and validation.
-- `server/` - server-only AI, lead persistence, VK notifications, auth, support storage and rate limiting.
-- `db/schema.ts` and `drizzle/` - database schema and migration.
+- `server/` - server-only AI, persistent storage, VK/MAX integrations, auth, support and rate limiting.
+- `db/schema.ts` and `drizzle/` - database schema and migrations.
 - `docs/` - deployment, admin, support, env and integration guides.
 
 ## Main Routes
@@ -78,6 +66,9 @@ The Vercel build uses the Nitro adapter and generates `.vercel/output`. Do not s
 
 - `POST /api/leads`
 - `POST /api/chat`
+- `POST /api/integrations/vk/callback`
+- `POST /api/admin/integrations/vk/sync`
+- `POST /api/admin/integrations/max/test`
 - `GET/POST /api/admin/session`
 - `POST /api/admin/login`
 - `POST /api/admin/logout`
@@ -93,7 +84,9 @@ Required production integrations:
 - GigaChat: `GIGACHAT_AUTH_KEY`;
 - Chat2Desk: `NEXT_PUBLIC_CHAT2DESK_WIDGET_TOKEN`;
 - Admin auth: `ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`;
-- D1/Sites database binding: `DB`.
+- VK: `VK_GROUP_ID`, `VK_ACCESS_TOKEN`, `VK_CALLBACK_SECRET`, `VK_CALLBACK_CONFIRMATION`;
+- MAX: `MAX_BOT_TOKEN`, `MAX_MANAGER_CHAT_ID`;
+- local persistence: `FASADOF_DATA_DIR=/var/lib/fasadof`.
 
 ## Documentation
 
@@ -104,6 +97,8 @@ Required production integrations:
 - `docs/SUPPORT_CHAT.md`
 - `docs/AI_CHAT_SETUP.md`
 - `docs/PRODUCTION_DEPLOY.md`
+- `docs/VPS_DEPLOY.md`
+- `docs/VK_MAX_INTEGRATION.md`
 - `docs/VERCEL_RAILWAY.md`
 - `docs/CONTENT_MANAGEMENT.md`
 - `docs/ANALYTICS_SETUP.md`

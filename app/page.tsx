@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { HomeExperience } from "@/components/HomeExperience";
+import { listPublicProducts } from "@/server/products";
 
 export const metadata: Metadata = {
   title: "Фасады, которые хочется трогать",
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Home() {
-  return <HomeExperience />;
+export default async function Home() {
+  const products = await listPublicProducts();
+  return <HomeExperience products={products} />;
 }

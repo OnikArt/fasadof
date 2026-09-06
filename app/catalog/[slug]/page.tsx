@@ -7,7 +7,8 @@ import { ProductObject } from "@/components/ProductObject";
 import { SiteHeader } from "@/components/SiteHeader";
 import { BUSINESS } from "@/config/business";
 import { getCategoryPage, getCategoryProducts, categoryPages } from "@/data/categoryPages";
-import { formatPrice, getProduct, productCategories, products } from "@/data/products";
+import { formatPrice, productCategories, products as seedProducts } from "@/data/products";
+import { getProductBySlug, listPublicProducts } from "@/server/products";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -15,14 +16,14 @@ type PageProps = {
 
 export async function generateStaticParams() {
   return [
-    ...products.map((product) => ({ slug: product.slug })),
+    ...seedProducts.map((product) => ({ slug: product.slug })),
     ...categoryPages.map((category) => ({ slug: category.slug })),
   ];
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const product = await getProductBySlug(slug);
   const category = getCategoryPage(slug);
 
   if (product) {
@@ -64,7 +65,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProductOrCategoryPage({ params }: PageProps) {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const product = await getProductBySlug(slug);
 
   if (!product) {
     const category = getCategoryPage(slug);
@@ -72,6 +73,7 @@ export default async function ProductOrCategoryPage({ params }: PageProps) {
     return <CategoryLanding slug={slug} />;
   }
 
+  const products = await listPublicProducts();
   const related = products
     .filter((item) => item.category === product.category && item.slug !== product.slug)
     .slice(0, 3);
@@ -195,11 +197,11 @@ export default async function ProductOrCategoryPage({ params }: PageProps) {
   );
 }
 
-function CategoryLanding({ slug }: { slug: string }) {
+async function CategoryLanding({ slug }: { slug: string }) {
   const category = getCategoryPage(slug);
   if (!category) notFound();
 
-  const categoryProducts = getCategoryProducts(category);
+  const categoryProducts = getCategoryProducts(category, await listPublicProducts());
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",

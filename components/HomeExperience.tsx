@@ -9,7 +9,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { LeadForm } from "@/components/LeadForm";
 import { BUSINESS } from "@/config/business";
 import { faq } from "@/data/faq";
-import { formatPrice, products, type Product } from "@/data/products";
+import { formatPrice, products as seedProducts, type Product } from "@/data/products";
 import { analytics } from "@/features/analytics/analytics";
 
 const materialTabs = ["Эмаль", "Шпон", "Массив", "ПЭТ", "Fenix", "ПВХ", "Камень", "Столешницы"] as const;
@@ -29,18 +29,18 @@ const mainMaterials = ["enamel", "natural-veneer", "solid-wood", "pet", "fenix-e
 const featuredCollection = ["stone-veneer", "art-beton", "compact-plates"];
 const catalogPreview = ["lmdf-moonlite", "aluminum-glass", "eva-dsp"];
 
-function pickProducts(slugs: string[]) {
+function pickProducts(products: Product[], slugs: string[]) {
   return slugs
     .map((slug) => products.find((product) => product.slug === slug))
     .filter((product): product is Product => Boolean(product));
 }
 
-export function HomeExperience() {
+export function HomeExperience({ products = seedProducts }: { products?: Product[] }) {
   const [activeMaterial, setActiveMaterial] = useState<(typeof materialTabs)[number]>("Эмаль");
   const activeProduct = products.find((product) => product.slug === materialSlugByTab[activeMaterial]) ?? products[0];
-  const mainMaterialProducts = useMemo(() => pickProducts(mainMaterials), []);
-  const featuredProducts = useMemo(() => pickProducts(featuredCollection), []);
-  const previewProducts = useMemo(() => pickProducts(catalogPreview), []);
+  const mainMaterialProducts = useMemo(() => pickProducts(products, mainMaterials), [products]);
+  const featuredProducts = useMemo(() => pickProducts(products, featuredCollection), [products]);
+  const previewProducts = useMemo(() => pickProducts(products, catalogPreview), [products]);
 
   useEffect(() => {
     analytics.track("page_view", { page: "/" });

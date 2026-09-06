@@ -3,10 +3,10 @@
 import { useMemo, useState } from "react";
 import { ProductCard } from "@/components/ProductCard";
 import { SiteHeader } from "@/components/SiteHeader";
-import { productCategories, products, type ProductCategory } from "@/data/products";
+import { productCategories, type Product, type ProductCategory } from "@/data/products";
 import { analytics } from "@/features/analytics/analytics";
 
-export function CatalogExperience() {
+export function CatalogExperience({ products }: { products: Product[] }) {
   const [category, setCategory] = useState<"all" | ProductCategory>("all");
   const [query, setQuery] = useState("");
 
@@ -17,7 +17,7 @@ export function CatalogExperience() {
       const matchesQuery = text.includes(query.toLowerCase());
       return matchesCategory && matchesQuery;
     });
-  }, [category, query]);
+  }, [category, products, query]);
 
   return (
     <>

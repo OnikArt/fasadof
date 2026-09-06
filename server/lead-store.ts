@@ -1,4 +1,5 @@
 import type { LeadPayload } from "@/server/leads";
+import { getDatabase } from "@/server/database";
 
 type D1PreparedStatement = {
   bind(...values: unknown[]): D1PreparedStatement;
@@ -30,18 +31,8 @@ export type StoredLead = {
   createdAt: string;
 };
 
-async function getD1() {
-  try {
-    const cloudflareWorkers = "cloudflare:workers";
-    const mod = await import(/* @vite-ignore */ cloudflareWorkers) as { env?: { DB?: D1DatabaseLike } };
-    return mod.env?.DB;
-  } catch {
-    return undefined;
-  }
-}
-
 export async function persistLead(lead: LeadPayload) {
-  const db = await getD1();
+  const db = await getDatabase();
   if (!db) return { persisted: false, reason: "D1 binding is not configured" };
 
   await ensureLeadSchema(db);
@@ -65,7 +56,7 @@ export async function persistLead(lead: LeadPayload) {
 }
 
 export async function listLeads() {
-  const db = await getD1();
+  const db = await getDatabase();
   if (!db) return [] satisfies StoredLead[];
 
   await ensureLeadSchema(db);
@@ -77,7 +68,7 @@ export async function listLeads() {
 }
 
 export async function updateLeadStatus(id: number, status: LeadStatus) {
-  const db = await getD1();
+  const db = await getDatabase();
   if (!db) return null;
 
   await ensureLeadSchema(db);

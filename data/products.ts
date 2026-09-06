@@ -10,6 +10,7 @@ export type Product = {
   description: string;
   fullDescription?: string;
   priceFrom?: number;
+  oldPrice?: number;
   pricePrefix?: string;
   priceUnit?: string;
   priceOnRequest?: boolean;
@@ -20,6 +21,10 @@ export type Product = {
   application?: string;
   popular?: boolean;
   status?: "published" | "hidden" | "archived";
+  vkOwnerId?: number;
+  vkMarketItemId?: number;
+  vkUrl?: string;
+  vkSyncedAt?: string;
   createdAt?: string;
   updatedAt?: string;
   createdBy?: string;

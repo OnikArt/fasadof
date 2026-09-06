@@ -57,6 +57,6 @@ export function getCategoryPage(slug: string) {
   return categoryPages.find((category) => category.slug === slug);
 }
 
-export function getCategoryProducts(category: CategoryPage) {
-  return products.filter(category.productFilter);
+export function getCategoryProducts(category: CategoryPage, catalog = products) {
+  return catalog.filter(category.productFilter);
 }

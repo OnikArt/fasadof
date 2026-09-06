@@ -1,0 +1,24 @@
+[Unit]
+Description=Fasadof production website
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fasadof
+Group=fasadof
+WorkingDirectory=/var/www/fasadof/fasadof
+Environment=NODE_ENV=production
+EnvironmentFile=/var/www/fasadof/fasadof/.env
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/fasadof
+
+[Install]
+WantedBy=multi-user.target

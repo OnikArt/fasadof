@@ -1,7 +1,18 @@
 import assert from "node:assert/strict";
 import { pbkdf2Sync, randomBytes } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import test from "node:test";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test, { after } from "node:test";
+
+const testDataDir = await mkdtemp(join(tmpdir(), "fasadof-tests-"));
+process.env.FASADOF_DATA_DIR = testDataDir;
+after(async () => {
+  await rm(testDataDir, { recursive: true, force: true }).catch((error) => {
+    if (process.platform === "win32" && ["EBUSY", "EPERM"].includes(error?.code)) return;
+    throw error;
+  });
+});
 
 async function loadWorker(seed = `${process.pid}-${Date.now()}`) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -226,11 +237,19 @@ test(".env.example documents active production variables", async () => {
     "ADMIN_EMAIL",
     "ADMIN_PASSWORD_HASH",
     "ADMIN_SESSION_SECRET",
+    "VK_GROUP_ID",
+    "VK_ACCESS_TOKEN",
+    "VK_CALLBACK_SECRET",
+    "VK_CALLBACK_CONFIRMATION",
+    "MAX_BOT_TOKEN",
+    "MAX_MANAGER_CHAT_ID",
+    "FASADOF_DATA_DIR",
+    "PORT",
   ]) {
     assert.match(envExample, new RegExp(`^${name}=`, "m"));
   }
 
-  assert.doesNotMatch(envExample, /GEMINI|MAX_BOT|MAX_CHAT|NEXT_PUBLIC_VK_PIXEL_ID/);
+  assert.doesNotMatch(envExample, /GEMINI|NEXT_PUBLIC_VK_PIXEL_ID/);
 });
 
 test("admin login API rate-limits repeated attempts", async () => {
@@ -251,7 +270,20 @@ test("admin login API rate-limits repeated attempts", async () => {
   assert.equal(attempts.at(-1)?.status, 429);
 });
 
-test("lead API normalizes Russian phone and does not call external notifications", async () => {
+test("lead API persists data and remains successful when MAX is unavailable", async () => {
+  const previous = {
+    MAX_BOT_TOKEN: process.env.MAX_BOT_TOKEN,
+    MAX_MANAGER_CHAT_ID: process.env.MAX_MANAGER_CHAT_ID,
+  };
+  process.env.MAX_BOT_TOKEN = "test-token";
+  process.env.MAX_MANAGER_CHAT_ID = "123456";
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    if (String(input).startsWith("https://platform-api2.max.ru/")) throw new Error("MAX unavailable in QA");
+    return originalFetch(input, init);
+  };
+
+  try {
   const worker = await loadWorker("lead-phone");
   const lead = await worker.fetch(
     new Request("http://localhost/api/leads", {
@@ -278,8 +310,16 @@ test("lead API normalizes Russian phone and does not call external notifications
 
   assert.equal(lead.status, 201);
   const payload = await lead.json();
-  assert.equal(payload.integration.persisted, false);
-  assert.equal(Object.hasOwn(payload.integration, "vk"), false);
+  assert.equal(payload.integration.persisted, true);
+  assert.equal(payload.integration.maxNotified, false);
+  assert.match(payload.integration.note, /MAX временно недоступен/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
 });
 
 test("important JSON APIs reject malformed payloads with 400", async () => {
@@ -588,4 +628,205 @@ test("server-renders privacy route", async () => {
 
   const html = await response.text();
   assert.match(html, /Политика и согласие/);
+});
+
+test("MAX, VK callback and VK catalogue sync work without duplicates", async () => {
+  const password = "StrongPassword123";
+  const restoreAdmin = installAdminEnv(password);
+  const integrationKeys = [
+    "VK_GROUP_ID",
+    "VK_ACCESS_TOKEN",
+    "VK_CALLBACK_SECRET",
+    "VK_CALLBACK_CONFIRMATION",
+    "MAX_BOT_TOKEN",
+    "MAX_MANAGER_CHAT_ID",
+  ];
+  const previous = Object.fromEntries(integrationKeys.map((key) => [key, process.env[key]]));
+  Object.assign(process.env, {
+    VK_GROUP_ID: "12345",
+    VK_ACCESS_TOKEN: "vk-test-token",
+    VK_CALLBACK_SECRET: "vk-test-secret",
+    VK_CALLBACK_CONFIRMATION: "vk-confirmation-code",
+    MAX_BOT_TOKEN: "max-test-token",
+    MAX_MANAGER_CHAT_ID: "987654",
+  });
+
+  const maxMessages = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url = new URL(String(input));
+    if (url.hostname === "platform-api2.max.ru") {
+      assert.equal(init?.headers?.authorization, "max-test-token");
+      assert.equal(url.searchParams.get("chat_id"), "987654");
+      maxMessages.push(JSON.parse(String(init?.body ?? "{}")));
+      return Response.json({ message: { body: { mid: `max-${maxMessages.length}` } } });
+    }
+    if (url.hostname === "api.vk.com" && url.pathname.endsWith("/users.get")) {
+      return Response.json({ response: [{ first_name: "Иван", last_name: "Петров" }] });
+    }
+    if (url.hostname === "api.vk.com" && url.pathname.endsWith("/market.get")) {
+      const photos = (id) => [{ sizes: [{ url: `https://vk-cdn.example/${id}-1.png`, width: 1200, height: 900 }] }, { sizes: [{ url: `https://vk-cdn.example/${id}-2.png`, width: 900, height: 700 }] }];
+      return Response.json({
+        response: {
+          count: 2,
+          items: [
+            {
+              id: 101,
+              owner_id: -12345,
+              title: "Эмаль матовая / глянцевая",
+              description: "Описание эмалевых фасадов из VK",
+              availability: 0,
+              category: { name: "Мебельные фасады" },
+              price: { amount: "999900", old_amount: "1099900" },
+              photos: photos(101),
+            },
+            {
+              id: 202,
+              owner_id: -12345,
+              title: "Новая фасадная панель",
+              description: "Новая карточка, созданная из VK",
+              availability: 0,
+              category: { name: "Мебельные фасады" },
+              price: { amount: "1234500", old_amount: "1500000" },
+              photos: photos(202),
+            },
+          ],
+        },
+      });
+    }
+    if (url.hostname === "vk-cdn.example") {
+      return new Response(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), { headers: { "content-type": "image/png" } });
+    }
+    return originalFetch(input, init);
+  };
+
+  try {
+    const worker = await loadWorker("vk-max-integrations");
+    const login = await worker.fetch(
+      new Request("http://localhost/api/admin/login", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.201" },
+        body: JSON.stringify({ email: "manager@example.com", password }),
+      }),
+      workerContext(),
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    assert.equal(login.status, 200);
+    const cookie = login.headers.get("set-cookie") ?? "";
+
+    const maxTest = await worker.fetch(
+      new Request("http://localhost/api/admin/integrations/max/test", { method: "POST", headers: { cookie } }),
+      workerContext(),
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    assert.equal(maxTest.status, 200);
+    assert.match(maxMessages[0].text, /Связь с сайтом ФасадоФ установлена/);
+
+    const confirmation = await worker.fetch(
+      new Request("http://localhost/api/integrations/vk/callback", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ type: "confirmation", group_id: 12345, secret: "vk-test-secret" }),
+      }),
+      workerContext(),
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    assert.equal(await confirmation.text(), "vk-confirmation-code");
+
+    const vkEvent = {
+      type: "message_new",
+      group_id: 12345,
+      event_id: "event-unique-1",
+      secret: "vk-test-secret",
+      object: { message: { from_id: 42, peer_id: 42, text: "Нужен расчёт фасадов" } },
+    };
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const callback = await worker.fetch(
+        new Request("http://localhost/api/integrations/vk/callback", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(vkEvent),
+        }),
+        workerContext(),
+        { waitUntil() {}, passThroughOnException() {} },
+      );
+      assert.equal(callback.status, 200);
+      assert.equal(await callback.text(), "ok");
+    }
+    assert.equal(maxMessages.filter((message) => /Новое сообщение VK/.test(message.text)).length, 1);
+
+    const preview = await worker.fetch(
+      new Request("http://localhost/api/admin/integrations/vk/sync", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie },
+        body: JSON.stringify({ action: "preview" }),
+      }),
+      workerContext(),
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    assert.equal(preview.status, 200);
+    const previewPayload = await preview.json();
+    assert.ok(previewPayload.rows.some((row) => row.status === "enrich" && row.vkMarketItemId === 101));
+    assert.ok(previewPayload.rows.some((row) => row.status === "create" && row.vkMarketItemId === 202));
+    assert.ok(previewPayload.rows.some((row) => row.status === "site_only"));
+
+    const apply = await worker.fetch(
+      new Request("http://localhost/api/admin/integrations/vk/sync", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie },
+        body: JSON.stringify({ action: "apply", priceStrategy: "preserve-site" }),
+      }),
+      workerContext(),
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    assert.equal(apply.status, 200);
+    const applied = await apply.json();
+    assert.equal(applied.summary.created, 1);
+    assert.equal(applied.summary.enriched, 1);
+    assert.equal(applied.summary.errors, 0);
+
+    const products = await worker.fetch(
+      new Request("http://localhost/api/admin/products", { headers: { cookie } }),
+      workerContext(),
+      { waitUntil() {}, passThroughOnException() {} },
+    ).then((response) => response.json());
+    const enamel = products.products.find((product) => product.slug === "enamel");
+    const created = products.products.find((product) => product.vkMarketItemId === 202);
+    assert.equal(enamel.priceFrom, 5800, "site price must be preserved by default");
+    assert.equal(enamel.vkMarketItemId, 101);
+    assert.equal(created.priceFrom, 12345);
+    assert.equal(created.oldPrice, 15000);
+    assert.match(created.image, /^\/api\/media\/vk\//);
+    assert.equal(created.gallery.length, 1);
+
+    const media = await worker.fetch(
+      new Request(`http://localhost${created.image}`),
+      workerContext(),
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    assert.equal(media.status, 200);
+    assert.equal(media.headers.get("content-type"), "image/png");
+
+    const secondApply = await worker.fetch(
+      new Request("http://localhost/api/admin/integrations/vk/sync", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie },
+        body: JSON.stringify({ action: "apply", priceStrategy: "preserve-site" }),
+      }),
+      workerContext(),
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    assert.equal(secondApply.status, 200);
+    const repeated = await secondApply.json();
+    assert.equal(repeated.summary.created, 0);
+    assert.equal(repeated.summary.errors, 0);
+    assert.equal(repeated.products.filter((product) => product.vkMarketItemId === 202).length, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreAdmin();
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
 });

@@ -9,8 +9,13 @@ export function ProductObject({
   size?: "default" | "large" | "compact";
   variant?: "module" | "slab" | "stack";
 }) {
+  const hasImage = product.image.startsWith("/") || product.image.startsWith("https://");
   return (
     <div className={`product-object ${product.texture} size-${size} ${variant}`} aria-label={product.name}>
+      {/* Imported media has unknown dimensions and is served by the local media route. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {hasImage && <img className="product-object-image" src={product.image} alt={product.name} loading="lazy" decoding="async" />}
+      {!hasImage && <>
       <div className="object-shadow" />
       <div className="object-board object-board-back" />
       <div className="object-board object-board-left" />
@@ -19,6 +24,7 @@ export function ProductObject({
       <div className="object-board object-board-accent" />
       <div className="object-board object-board-glass" />
       <div className="object-handle" />
+      </>}
     </div>
   );
 }
