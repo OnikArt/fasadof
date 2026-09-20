@@ -2,6 +2,10 @@
 
 All tokens are server-only. Never add real values to Git, client-side variables, README files or `.env.example`.
 
+Run `npm run integrations:check` on the VPS to verify storage, database access, DNS and both provider credentials without printing secrets. The command reports only safe HTTP/API diagnostics, bot identity, subscription/update counts, candidate chat IDs and the VK product count. It never removes a webhook subscription.
+
+Node is started with the host certificate store (`NODE_USE_SYSTEM_CA=1` and `--use-system-ca`) because the provider certificate chain may not validate against Node's bundled CA set on every host.
+
 ## MAX
 
 Set in the VPS `.env`:
@@ -32,7 +36,7 @@ VK_CALLBACK_SECRET=
 VK_CALLBACK_CONFIRMATION=
 ```
 
-Use the numeric community ID without a leading minus. The token must have access to the community market and user lookup required by `market.get` and `users.get`.
+Use the numeric community ID without a leading minus. `VK_ACCESS_TOKEN` must be a **user access token** with access to the community market and the methods required by `market.get` and `users.get`. A community access token is not sufficient: VK returns error 27 (`Group authorization failed`) for `market.get`. Keep the user token server-side and never prefix it with `NEXT_PUBLIC_`.
 
 In community management, add this Callback API server:
 
@@ -65,6 +69,15 @@ The preview is read-only and uses this matching order:
 Choose the price strategy before applying. `Сохранить цену сайта` is the default. It shows price differences without overwriting the site. `Принять цену VK` is an explicit opt-in update.
 
 When applied, synchronization fills missing descriptions and galleries, preserves existing quality content, saves VK identifiers and downloads required VK photos to `/var/lib/fasadof/media/vk`. Site-only products are never deleted, hidden or changed. Repeated synchronization uses the saved VK identifiers and does not create duplicates.
+
+Before applying a live synchronization, run:
+
+```bash
+npm run integrations:check
+npm run integrations:check -- --send-max
+```
+
+The second command deliberately sends exactly one MAX test message. Run it only when that delivery is expected. Continue with VK preview/apply only when `VK auth` reports `SUCCESS` and a non-error product count.
 
 MAX API reference: `POST https://platform-api2.max.ru/messages?chat_id=...` with `Authorization: <MAX_BOT_TOKEN>`.
 

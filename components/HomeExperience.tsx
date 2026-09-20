@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ProductCard } from "@/components/ProductCard";
-import { HeroObject, ProductObject } from "@/components/ProductObject";
+import { ProductObject } from "@/components/ProductObject";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SiteHeader } from "@/components/SiteHeader";
 import { LeadForm } from "@/components/LeadForm";
@@ -50,16 +50,28 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
     <>
       <SiteHeader />
       <main id="top">
-        <section className="hero-section">
-          <div className="page-shell hero-grid">
-            <div className="hero-brand" aria-hidden="true">ФАСАДОФ</div>
-            <div className="hero-visual">
-              <HeroObject />
+        <section className="cover-hero">
+          <div className="cover-hero-media">
+              {/* Pre-optimized static sources avoid requiring an image proxy on the VPS. */}
+              <picture>
+                <source
+                  media="(max-width: 768px)"
+                  srcSet="/images/hero/fasadof-mobile-430.webp 430w, /images/hero/fasadof-mobile-860.webp 860w"
+                  sizes="100vw"
+                />
+                <img src="/images/hero/fasadof-scene-1983.webp"
+                  srcSet="/images/hero/fasadof-scene-1280.webp 1280w, /images/hero/fasadof-scene-1983.webp 1983w"
+                  sizes="100vw"
+                  width={1983} height={793} fetchPriority="high" loading="eager"
+                  alt="Интерьерная композиция мебельных фасадов, дерева и камня ФасадоФ" />
+              </picture>
             </div>
-            <div className="hero-copy">
-              <p className="eyebrow">Мебельные фасады и столешницы</p>
-              <h1>Материалы, которые собирают интерьер вокруг себя.</h1>
-              <p>Эмаль, шпон, массив, ПЭТ, Fenix, ПВХ, камень и столешницы для мебели на заказ.</p>
+          <div className="page-shell cover-hero-layout">
+            <div className="cover-hero-index" aria-hidden="true">01 / 09</div>
+            <div className="cover-hero-copy">
+              <p className="eyebrow">Мебельные материалы · Воронеж</p>
+              <h1><span>Фасады и столешницы </span><br />для мебели <span>на заказ</span></h1>
+              <p>Подберём материал, цвет и фактуру и рассчитаем стоимость проекта.</p>
               <div className="hero-actions">
                 <a className="btn primary" href="#order" onClick={() => analytics.track("cta_click", { place: "hero", action: "lead" })}>
                   Рассчитать проект
@@ -67,10 +79,15 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
                 <a className="btn ghost" href="/catalog" onClick={() => analytics.track("catalog_open")}>Открыть каталог</a>
               </div>
             </div>
-            <div className="hero-facts" aria-label="Условия">
-              <span>{BUSINESS.freeDelivery}</span>
-              <span>{BUSINESS.workingHoursShort}</span>
+            <div className="cover-hero-facts" aria-label="Доставка и график работы">
+              <strong>{BUSINESS.freeDelivery}</strong>
+              <span>ПН–ПТ · 09:00–17:00</span>
+              <a className="hero-showroom" href={BUSINESS.socials.yandexMaps} target="_blank" rel="noreferrer">
+                <span>Посмотреть материалы вживую</span>
+                <strong>Воронеж · ул. Машиностроителей, 3</strong>
+              </a>
             </div>
+            <p className="cover-hero-materials">Эмаль · шпон · массив · Fenix · камень</p>
           </div>
         </section>
 
@@ -78,8 +95,8 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
           <SectionHeader
             eyebrow="01 / Категории"
             id="category-title"
-            title="Сразу понятно, что можно заказать."
-            description="Категории ведут в каталог и работают как витрина материалов, а не как текстовый список ссылок."
+            title="Фасады под ваш интерьер"
+            description="От гладкой эмали до натурального дерева: подберём материал для кухни, шкафа или тумбы."
           />
           <div className="category-grid">
             {materialTabs.map((material) => {
@@ -99,7 +116,7 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
             eyebrow="02 / Материалы"
             id="materials-title"
             title="Основные фасадные решения"
-            description="На главной только ключевые материалы. Полный ассортимент и цены остаются в каталоге."
+            description="Сравните фактуры и стоимость, чтобы выбрать решение для вашей мебели."
             link={{ href: "/catalog", label: "Весь каталог" }}
           />
           <div className="product-grid">
@@ -119,7 +136,7 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
             eyebrow="03 / Featured"
             id="featured-title"
             title="Глубина, камень, архитектурная плоскость."
-            description="Более выразительные материалы вынесены в тёмную showroom-сцену."
+            description="Камень, бетон и компакт-плиты для выразительных деталей интерьера."
           />
           <div className="featured-grid">
             {featuredProducts.map((product) => (
@@ -132,8 +149,8 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
           <SectionHeader
             eyebrow="04 / Explorer"
             id="explorer-title"
-            title="Материал крупно, без шума."
-            description="Выбор меняет центральный объект, цену и описание. Это быстрый путь к первому решению."
+            title="Найдите свою фактуру"
+            description="Подберём покрытие под стиль интерьера, условия использования и бюджет."
           />
           <div className="material-explorer">
             <div className="material-tabs" role="tablist" aria-label="Материалы">
@@ -151,10 +168,10 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
                 </button>
               ))}
             </div>
-            <div className="explorer-visual">
+            <div className="explorer-visual" key={`visual-${activeProduct.id}`}>
               <ProductObject product={activeProduct} size="large" variant="stack" />
             </div>
-            <div className="explorer-copy">
+            <div className="explorer-copy" key={`copy-${activeProduct.id}`}>
               <p className="eyebrow">{activeProduct.material}</p>
               <h3>{activeProduct.name}</h3>
               <p>{activeProduct.description}</p>
@@ -173,14 +190,17 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
           />
           <div className="capability-grid">
             {[
-              { title: "Низкие цены", icon: "₽" },
-              { title: "Быстрые сроки", icon: "◷" },
-              { title: "Качество", icon: "✓" },
+              { label: "Цена", title: "Выгодная стоимость", description: "Поможем подобрать материал под ваш бюджет." },
+              { label: "Срок", title: "Понятные сроки", description: "Срок заказа уточняется до запуска проекта." },
+              { label: "Качество", title: "Контроль исполнения", description: "Согласуем материал, фактуру и детали до производства." },
             ].map((item, index) => (
               <article className="capability-card" key={item.title}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <strong aria-hidden="true">{item.icon}</strong>
-                <h3>{item.title}</h3>
+                <div className="capability-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</div>
+                <p className="capability-label">{item.label}</p>
+                <div className="capability-copy">
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                </div>
               </article>
             ))}
           </div>
@@ -191,7 +211,7 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
             eyebrow="06 / Проекты"
             id="inspiration-title"
             title="Фасад как предмет в комнате."
-            description="Временная визуальная система показывает сценарии: тёплая древесина, тёмная плоскость, каменный edge, стеклянный модуль."
+            description="Сочетайте дерево, эмаль, камень и стекло в одном проекте. Поможем согласовать материалы."
           />
           <div className="inspiration-grid">
             <article className="inspiration-card large">
@@ -214,7 +234,7 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
             eyebrow="07 / Каталог"
             id="catalog-preview-title"
             title="Ещё несколько материалов"
-            description="Остальное не перегружает главную и доступно на отдельной странице каталога."
+            description="Больше вариантов для фасадов и рабочих поверхностей в полном каталоге."
             link={{ href: "/catalog", label: "Перейти в каталог" }}
           />
           <div className="product-grid compact">
@@ -231,51 +251,61 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
           </div>
         </section>
 
-        <section className="section order-section" id="order" aria-labelledby="order-title">
-          <SectionHeader
-            eyebrow="08 / Расчет"
-            id="order-title"
-            title="Короткая заявка без лишних полей."
-            description="Форма передаёт UTM, first-touch, last-touch, страницу обращения и выбранный материал."
-          />
-          <LeadForm />
-        </section>
-
         <section className="section faq-section" aria-labelledby="faq-title">
-          <SectionHeader eyebrow="09 / FAQ" id="faq-title" title="Короткие ответы" />
+          <SectionHeader eyebrow="08 / FAQ" id="faq-title" title="Короткие ответы" />
           <div className="faq-list">
             {faq.map((item) => (
               <details key={item.question}>
                 <summary>{item.question}</summary>
                 <p>{item.answer}</p>
+                {item.href && <a className="faq-action" href={item.href} target="_blank" rel="noreferrer">Показать на карте →</a>}
               </details>
             ))}
           </div>
         </section>
 
         <section className="section contacts-section" id="contacts" aria-labelledby="contacts-title">
-          <div className="contact-grid">
-            <article className="contact-panel">
+          <div className="contact-experience">
+            <article className="contact-details">
               <p className="eyebrow">Контакты</p>
-              <h2 id="contacts-title">Связаться с ФасадоФ</h2>
-              <p>{BUSINESS.address}</p>
-              <p>
-                <a href={BUSINESS.phone.href} onClick={() => analytics.track("phone_click", { place: "contacts" })}>
-                  {BUSINESS.phone.display}
+              <h2 id="contacts-title">Обсудим ваш проект</h2>
+              <p className="contact-intro">Подскажем по материалам, покажем образцы в шоуруме и уточним детали будущего заказа.</p>
+              <div className="contact-rows">
+                <a className="contact-row" href={BUSINESS.phone.href} onClick={() => analytics.track("phone_click", { place: "contacts" })}>
+                  <span>Номер телефона</span>
+                  <strong>{BUSINESS.phone.display}</strong>
+                  <b aria-hidden="true">→</b>
                 </a>
-              </p>
-              <p><a href={BUSINESS.emailHref}>{BUSINESS.email}</a></p>
-              <div className="social-links" aria-label="Социальные сети">
-                <a href={BUSINESS.socials.vk} target="_blank" rel="noreferrer">VK</a>
+                <a className="contact-row" href={BUSINESS.emailHref}>
+                  <span>Электронная почта</span>
+                  <strong>{BUSINESS.email}</strong>
+                  <b aria-hidden="true">→</b>
+                </a>
+                <a className="contact-row" href={BUSINESS.socials.yandexMaps} target="_blank" rel="noreferrer">
+                  <span>Посмотреть материалы вживую</span>
+                  <strong>{BUSINESS.address}</strong>
+                  <b aria-hidden="true">→</b>
+                </a>
+              </div>
+              <div className="contact-meta">
+                <div>
+                  <span>График</span>
+                  <strong>{BUSINESS.workingHours.label}</strong>
+                  <small>{BUSINESS.workingHours.weekend}</small>
+                </div>
+                <strong className="delivery-badge">{BUSINESS.freeDelivery}</strong>
+              </div>
+              <div className="social-links" aria-label="Каналы связи">
                 <a href={BUSINESS.socials.max} target="_blank" rel="noreferrer" onClick={() => analytics.track("max_click", { place: "contacts" })}>MAX</a>
+                <a href={BUSINESS.socials.vk} target="_blank" rel="noreferrer">VK</a>
                 <a href={BUSINESS.socials.yandexMaps} target="_blank" rel="noreferrer">Яндекс Карты</a>
               </div>
             </article>
-            <article className="contact-panel pink">
-              <strong>{BUSINESS.freeDelivery}</strong>
-              <span>{BUSINESS.workingHoursShort}</span>
-              <span>{BUSINESS.workingHours.weekend}</span>
-              <p>Менеджеры отвечают в рабочее время. AI-помощник доступен онлайн.</p>
+            <article className="contact-calculation" id="order" aria-labelledby="order-title">
+              <p className="eyebrow">09 / Расчёт</p>
+              <h2 id="order-title">Индивидуальный расчёт</h2>
+              <p className="calculation-intro">Стоимость рассчитывается индивидуально после отправки заявки. Менеджер уточнит размеры, материалы и детали проекта.</p>
+              <LeadForm />
             </article>
           </div>
         </section>
@@ -285,8 +315,8 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
         <div className="page-shell footer-grid">
           <span className="footer-brand"><BrandLogo compact /></span>
           <div className="footer-contact">
-            <a href={BUSINESS.phone.href} onClick={() => analytics.track("phone_click", { place: "footer" })}>{BUSINESS.phone.display}</a>
-            <a href={BUSINESS.emailHref}>{BUSINESS.email}</a>
+            <div><span>Номер телефона</span><a href={BUSINESS.phone.href} onClick={() => analytics.track("phone_click", { place: "footer" })}>{BUSINESS.phone.display}</a></div>
+            <div><span>Электронная почта</span><a href={BUSINESS.emailHref}>{BUSINESS.email}</a></div>
           </div>
           <nav className="footer-links" aria-label="Ссылки футера">
             <a href={BUSINESS.socials.max} target="_blank" rel="noreferrer" onClick={() => analytics.track("max_click", { place: "footer" })}>MAX</a>
@@ -300,6 +330,10 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
             {BUSINESS.workingHours.schedule.map((item) => (
               <span key={item.label}>{item.label}: {item.value}</span>
             ))}
+          </div>
+          <div className="footer-credit">
+            <span>© ФасадоФ</span>
+            <span>Digital by OnikArt</span>
           </div>
         </div>
       </footer>

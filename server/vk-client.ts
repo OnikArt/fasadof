@@ -1,3 +1,5 @@
+import { IntegrationError, integrationError, integrationLog } from "@/server/integration-errors";
+
 const VK_API_URL = "https://api.vk.com/method";
 const VK_API_VERSION = "5.199";
 
@@ -71,24 +73,32 @@ export class VkClient {
   }
 
   private async call<T>(method: string, params: Record<string, string>) {
+    const started = Date.now();
     const url = new URL(`${VK_API_URL}/${method}`);
     Object.entries({ ...params, access_token: this.token, v: VK_API_VERSION }).forEach(([key, value]) => url.searchParams.set(key, value));
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12_000);
+    const timeout = setTimeout(() => controller.abort(), 4_000);
     try {
       const response = await fetch(url, { signal: controller.signal });
-      if (!response.ok) throw new Error(`VK API HTTP ${response.status}`);
+      if (!response.ok) throw new IntegrationError(`HTTP_${response.status}`, `VK: API вернул HTTP ${response.status}.`);
       const payload = await response.json() as VkResponse<T>;
-      if (payload.error) throw new Error(`VK API ${payload.error.error_code}: ${payload.error.error_msg || "unknown error"}`);
+      if (payload.error) {
+        const code = Number(payload.error.error_code) || 0;
+        throw new IntegrationError(`VK_${code}`, `VK: ${[5, 7, 15, 27, 28].includes(code) ? "проверьте токен и права доступа к товарам" : "ошибка API"} (код ${code}).`);
+      }
       if (!payload.response) throw new Error("VK API returned an empty response");
+      integrationLog("vk", method, started);
       return payload.response;
+    } catch (error) {
+      integrationLog("vk", method, started, error);
+      throw integrationError(error, "VK");
     } finally {
       clearTimeout(timeout);
     }
   }
 
   private assertConfigured() {
-    if (!this.configured) throw new Error("VK_GROUP_ID or VK_ACCESS_TOKEN is not configured");
+    if (!this.configured) throw new IntegrationError("NOT_CONFIGURED", "VK: токен или ID сообщества не настроен.");
   }
 }
 

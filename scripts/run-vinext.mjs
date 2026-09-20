@@ -13,6 +13,7 @@ if (env.PORT && ["dev", "start", "preview"].includes(command)) {
 const child = spawn(executable, process.platform === "win32" ? ["/d", "/s", "/c", "vinext", ...args] : args, {
   env: {
     ...env,
+    NODE_USE_SYSTEM_CA: env.NODE_USE_SYSTEM_CA || "1",
     WRANGLER_LOG_PATH: ".wrangler/wrangler.log",
   },
   stdio: "inherit",

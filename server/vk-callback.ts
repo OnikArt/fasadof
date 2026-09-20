@@ -54,12 +54,17 @@ async function formatEvent(payload: VkCallbackPayload, vk: VkClient) {
 
   if (payload.type === "market_order_new" || payload.type === "market_order_edit") {
     const orderId = numberValue(object.id) ?? numberValue(object.order_id);
-    const status = stringValue(object.status) || stringValue(object.display_order_id) || "без статуса";
+    const status = scalarValue(object.status) || scalarValue(object.display_order_id) || "без статуса";
+    const total = scalarValue(asObject(object.total_price)?.text) || scalarValue(object.total_price);
+    const itemCount = Array.isArray(object.items) ? object.items.length : 0;
     return [
-      payload.type === "market_order_new" ? "🛒 Новый заказ VK Market" : "🛒 Заказ VK Market изменён",
+      "🛒 VK Market",
       "",
+      `Тип: ${payload.type === "market_order_new" ? "Новый заказ" : "Заказ изменён"}`,
       `Номер: ${orderId ?? "не указан"}`,
       `Статус: ${status}`,
+      total ? `Сумма: ${total}` : "",
+      itemCount ? `Товаров: ${itemCount}` : "",
       userId ? `Покупатель: ${userName}` : "",
       "",
       `[Открыть VK Market](https://vk.com/market-${groupId})`,
@@ -68,27 +73,31 @@ async function formatEvent(payload: VkCallbackPayload, vk: VkClient) {
 
   if (payload.type === "lead_forms_new") {
     const formName = stringValue(object.form_name) || "Lead Ads";
+    const answers = summarizeLeadAnswers(object.answers);
     return [
       "📨 Новая заявка VK",
       "",
       `Форма: ${formName}`,
       userId ? `Пользователь: ${userName}` : "",
+      ...answers,
       "",
       `[Открыть сообщество](https://vk.com/club${groupId})`,
     ].filter(Boolean).join("\n");
   }
 
   const labels: Record<string, string> = {
-    wall_reply_new: "Новый комментарий к записи VK",
-    photo_comment_new: "Новый комментарий к фото VK",
-    video_comment_new: "Новый комментарий к видео VK",
-    market_comment_new: "Новый комментарий VK Market",
+    wall_reply_new: "Новый комментарий VK",
+    photo_comment_new: "Новый комментарий VK",
+    video_comment_new: "Новый комментарий VK",
+    market_comment_new: "Новый комментарий VK",
   };
+  const objectLabel = commentObjectLabel(payload.type, object);
   return [
-    `🔵 ${labels[payload.type ?? ""] ?? "Новое событие VK"}`,
+    `💬 ${labels[payload.type ?? ""] ?? "Новое событие VK"}`,
     "",
     `👤 ${userName}`,
     `💬 ${text}`,
+    objectLabel ? `Объект: ${objectLabel}` : "",
     "",
     `[Открыть сообщество VK](https://vk.com/club${groupId})`,
   ].join("\n");
@@ -104,4 +113,34 @@ function stringValue(value: unknown) {
 
 function numberValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function scalarValue(value: unknown) {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
+}
+
+function commentObjectLabel(type: string | undefined, object: VkObject) {
+  const fields: Record<string, [string, string]> = {
+    wall_reply_new: ["запись", "post_id"],
+    photo_comment_new: ["фото", "photo_id"],
+    video_comment_new: ["видео", "video_id"],
+    market_comment_new: ["товар", "item_id"],
+  };
+  const field = type ? fields[type] : undefined;
+  if (!field) return "";
+  const id = scalarValue(object[field[1]]);
+  return id ? `${field[0]} #${id}` : field[0];
+}
+
+function summarizeLeadAnswers(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 12).map((answer) => {
+    const item = asObject(answer);
+    if (!item) return "";
+    const key = stringValue(item.key) || stringValue(item.question) || stringValue(item.name) || "Ответ";
+    const answerValue = scalarValue(item.answer) || scalarValue(item.value);
+    return answerValue ? `${key}: ${answerValue}` : "";
+  }).filter(Boolean);
 }

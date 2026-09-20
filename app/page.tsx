@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { HomeExperience } from "@/components/HomeExperience";
+import { faq } from "@/data/faq";
 import { listPublicProducts } from "@/server/products";
 
 export const metadata: Metadata = {
@@ -13,5 +14,20 @@ export const metadata: Metadata = {
 
 export default async function Home() {
   const products = await listPublicProducts();
-  return <HomeExperience products={products} />;
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faq.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
+    })),
+  };
+
+  return (
+    <>
+      <HomeExperience products={products} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+    </>
+  );
 }

@@ -1,8 +1,10 @@
 # Support chat
 
-## AI
+## Public chat
 
-The browser talks only to `/api/chat`. The server chooses the provider through `AI_PROVIDER`; production default is GigaChat. Secrets never go to the frontend.
+The production customer widget is Chat2Desk. Its public widget token remains client-side, while VK, MAX and admin secrets stay server-side.
+
+The legacy `/api/chat` support flow uses only the local product knowledge base and does not call an external AI provider.
 
 ## Manager online status
 
@@ -10,19 +12,19 @@ The browser talks only to `/api/chat`. The server chooses the provider through `
 
 ## "Позвать менеджера"
 
-When the customer clicks `Позвать менеджера`, the conversation status becomes `WAITING_OPERATOR`. AI pauses while the request is fresh.
+When the customer requests a manager, the conversation status becomes `WAITING_OPERATOR`. The local automatic responder pauses while the request is fresh.
 
 ## Waiting operator
 
 The user can keep writing. Messages are saved in the same conversation and shown in the admin queue.
 
-## AI fallback
+## Local fallback
 
-If no manager replies before `MANAGER_WAIT_TIMEOUT_MS` (default 5 minutes), the server changes the conversation back to `AI` and appends a system message: AI is available again. No page reload is required.
+If no manager replies before `MANAGER_WAIT_TIMEOUT_MS` (default 5 minutes), the server changes the conversation back to `AUTO` and appends a system message. No external AI service is used.
 
 ## Manager takeover
 
-In `/admin/support`, the manager clicks `Взять диалог`. The status becomes `OPERATOR`; AI stays silent while the manager owns the dialog.
+In `/admin/support`, the manager clicks `Взять диалог`. The status becomes `OPERATOR`; the automatic responder stays silent while the manager owns the dialog.
 
 ## Close conversation
 

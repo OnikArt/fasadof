@@ -26,7 +26,7 @@ npm run admin:create -- manager@example.com "very-strong-password" "Алексе
 
 ## Support queue
 
-Диалоги имеют статусы `AI`, `WAITING_OPERATOR`, `OPERATOR`, `CLOSED`. Очередь `/admin/support` позволяет фильтровать статусы, брать диалог, отвечать и закрывать.
+Диалоги имеют статусы `AUTO`, `WAITING_OPERATOR`, `OPERATOR`, `CLOSED`. Очередь `/admin/support` позволяет фильтровать статусы, брать диалог, отвечать и закрывать.
 
 ## Replies
 

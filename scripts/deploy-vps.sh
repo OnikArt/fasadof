@@ -6,8 +6,12 @@ cd /var/www/fasadof/fasadof
 git pull --ff-only
 npm ci
 npm run typecheck
+npm run lint
+npm test
 npm run build
-npm run migrate:vps
+
+install -d -o fasadof -g fasadof -m 0750 /var/lib/fasadof /var/lib/fasadof/media /var/lib/fasadof/media/vk /var/lib/fasadof/media/products
+runuser -u fasadof -- npm run migrate:vps
 
 systemctl restart fasadof
 if ! systemctl is-active --quiet fasadof; then

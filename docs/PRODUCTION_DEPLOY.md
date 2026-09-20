@@ -50,13 +50,6 @@ NEXT_PUBLIC_CHAT2DESK_STATIC_DOMAIN=https://storage.chat2desk.com/
 Backend/private variables:
 
 ```env
-AI_PROVIDER=gigachat
-GIGACHAT_AUTH_KEY=
-GIGACHAT_SCOPE=GIGACHAT_API_PERS
-GIGACHAT_MODEL=GigaChat
-GIGACHAT_BASE_URL=https://api.giga.chat
-GIGACHAT_AUTH_URL=
-GIGACHAT_TIMEOUT_MS=12000
 MANAGER_WAIT_TIMEOUT_MS=300000
 ADMIN_EMAIL=
 ADMIN_NAME=
@@ -65,7 +58,7 @@ ADMIN_SESSION_SECRET=
 PORT=3000
 ```
 
-Never put `GIGACHAT_AUTH_KEY`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, database credentials, or future private integration tokens into `NEXT_PUBLIC_*`.
+Never put `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, VK/MAX tokens, database credentials, or future private integration tokens into `NEXT_PUBLIC_*`.
 
 ## Railway
 
@@ -92,13 +85,6 @@ Railway variables:
 
 | Name | Required? | Secret? | Purpose |
 | --- | --- | --- | --- |
-| `AI_PROVIDER` | No | No | Set to `gigachat` |
-| `GIGACHAT_AUTH_KEY` | Yes for AI | Yes | GigaChat OAuth authorization key |
-| `GIGACHAT_SCOPE` | No | No | GigaChat scope |
-| `GIGACHAT_MODEL` | No | No | GigaChat model |
-| `GIGACHAT_BASE_URL` | No | No | GigaChat API base URL |
-| `GIGACHAT_AUTH_URL` | No | No | Optional OAuth URL override |
-| `GIGACHAT_TIMEOUT_MS` | No | No | Request timeout |
 | `MANAGER_WAIT_TIMEOUT_MS` | No | No | Manager wait fallback |
 | `ADMIN_EMAIL` | Yes | No | Admin login |
 | `ADMIN_NAME` | Yes | No | Admin name |
@@ -110,7 +96,7 @@ Railway database:
 
 The current code uses the D1 binding `DB`. Do not create a PostgreSQL database unless a separate adapter is added. If the project is later migrated to PostgreSQL, add `DATABASE_URL` only with that adapter change.
 
-Important: Railway can run the fullstack app, admin, forms and AI runtime, but it does not provide the Cloudflare D1 `DB` binding. Production persistence for leads/products/support still requires the Cloudflare/Sites environment or a future Railway database adapter.
+Important: Railway can run the fullstack app, admin and forms, but ephemeral service storage is unsuitable for this SQLite deployment. The VPS setup uses `FASADOF_DATA_DIR=/var/lib/fasadof` so leads, products, support data and imported media survive releases and restarts.
 
 Railway domain:
 
@@ -157,6 +143,9 @@ drizzle/0000_fasadof_support.sql
 drizzle/0001_chat_ratings_employees.sql
 drizzle/0002_product_cms.sql
 drizzle/0003_leads_email_status.sql
+drizzle/0004_product_media.sql
+drizzle/0005_chat_auto_status.sql
+drizzle/0006_lead_lifecycle_audit.sql
 ```
 
 Migration command for this repository:
@@ -181,9 +170,9 @@ Chat2Desk is loaded by `components/Chat2DeskWidget.tsx`, mounted in `app/layout.
 Recommended mapping after QA:
 
 ```text
-example.ru -> Vercel
-www.example.ru -> Vercel
-api.example.ru -> Railway only if API split is introduced
+fasadof36.ru -> production web service
+www.fasadof36.ru -> production web service or canonical redirect
+api.fasadof36.ru -> backend service only if an API split is introduced
 ```
 
 Vercel and Railway issue SSL certificates for custom domains.
@@ -218,7 +207,8 @@ ADMIN:
 
 - Login, Dashboard, Товары, Заявки, Сотрудники, Аналитика, Настройки.
 - Product create/edit/status change.
-- Lead status change: `NEW`, `IN_PROGRESS`, `DONE`.
+- Lead status change: `NEW`, `IN_PROGRESS`, `DONE`, `REJECTED`.
+- Active leads (`NEW`, `IN_PROGRESS`) cannot be deleted. Terminal leads are soft-deleted, and the actor, timestamp and previous status remain in `lead_audit_events`.
 - Open site and logout.
 
 API/DATABASE:

@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://fasadof.dwayneclifford50004.chatgpt.site/sitemap.xml
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: https://fasadof36.ru/sitemap.xml

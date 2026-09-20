@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { PhoneInput } from "@/components/PhoneInput";
+import { BUSINESS } from "@/config/business";
 import { analytics } from "@/features/analytics/analytics";
 import { getAttribution } from "@/features/attribution/attribution";
 import { normalizePhone, validateRussianPhone } from "@/features/phone/phone";
@@ -22,6 +23,7 @@ export function LeadForm({ product = "" }: { product?: string }) {
     area: "",
     name: "",
     phone: "",
+    email: "",
     message: "",
     consent: false,
   });
@@ -45,6 +47,7 @@ export function LeadForm({ product = "" }: { product?: string }) {
     const nextErrors: Record<string, string> = {};
     if (!form.name.trim()) nextErrors.name = "Укажите имя";
     if (!validateRussianPhone(form.phone)) nextErrors.phone = "Укажите телефон в формате +7 (___) ___-__-__";
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) nextErrors.email = "Проверьте адрес электронной почты";
     if (!form.consent) nextErrors.consent = "Нужно согласие на обработку данных";
 
     if (Object.keys(nextErrors).length > 0) {
@@ -62,6 +65,7 @@ export function LeadForm({ product = "" }: { product?: string }) {
         body: JSON.stringify({
           name: form.name,
           phone: normalizePhone(form.phone),
+          email: form.email.trim(),
           message: form.message,
           product: form.product || form.need,
           material: form.material,
@@ -87,13 +91,13 @@ export function LeadForm({ product = "" }: { product?: string }) {
     return (
       <div className="form-state success" role="status">
         <span>Заявка принята.</span>
-        <p>Мы сохранили обращение и свяжемся с вами в рабочее время.</p>
+        <p>Заявка отправлена. Менеджер свяжется с вами для уточнения деталей и индивидуального расчёта.</p>
       </div>
     );
   }
 
   return (
-    <form className="lead-form" onSubmit={submit}>
+    <form className="lead-form" onSubmit={submit} noValidate>
       <div className="form-progress" aria-hidden="true">
         <span style={{ width: progress }} />
       </div>
@@ -156,13 +160,25 @@ export function LeadForm({ product = "" }: { product?: string }) {
           <legend>Контакты</legend>
           <label>
             Имя
-            <input value={form.name} onChange={(event) => updateField("name", event.target.value)} />
-            {errors.name && <span className="field-error">{errors.name}</span>}
+            <input autoComplete="name" aria-invalid={Boolean(errors.name)} value={form.name} onChange={(event) => updateField("name", event.target.value)} />
+            {errors.name && <span className="field-error" role="alert">{errors.name}</span>}
+          </label>
+          <label>
+            Электронная почта <span className="optional-label">необязательно</span>
+            <input
+              aria-invalid={Boolean(errors.email)}
+              autoComplete="email"
+              inputMode="email"
+              type="email"
+              value={form.email}
+              onChange={(event) => updateField("email", event.target.value)}
+            />
+            {errors.email && <span className="field-error" role="alert">{errors.email}</span>}
           </label>
           <label>
             Телефон
-            <PhoneInput value={form.phone} onValueChange={(formatted) => updateField("phone", formatted)} />
-            {errors.phone && <span className="field-error">{errors.phone}</span>}
+            <PhoneInput aria-invalid={Boolean(errors.phone)} value={form.phone} onValueChange={(formatted) => updateField("phone", formatted)} />
+            {errors.phone && <span className="field-error" role="alert">{errors.phone}</span>}
           </label>
           <label>
             Комментарий
@@ -176,12 +192,12 @@ export function LeadForm({ product = "" }: { product?: string }) {
             />
             <span>Согласен на обработку персональных данных</span>
           </label>
-          {errors.consent && <span className="field-error">{errors.consent}</span>}
+          {errors.consent && <span className="field-error" role="alert">{errors.consent}</span>}
           <button className="btn primary" disabled={status === "loading"} type="submit">
             {status === "loading" ? "Отправляем" : "Отправить заявку"}
           </button>
           {status === "error" && (
-            <p className="field-error" role="alert">API временно недоступен. Попробуйте ещё раз или передайте заявку менеджеру.</p>
+            <p className="field-error" role="alert">Не удалось подтвердить отправку заявки. Позвоните нам: <a href={BUSINESS.phone.href}>{BUSINESS.phone.display}</a>.</p>
           )}
         </fieldset>
       )}

@@ -5,7 +5,6 @@
 - [ ] Real phone, email and address added.
 - [ ] VK, Instagram and MAX links added.
 - [ ] Production domain reflected in config, sitemap and robots.
-- [ ] `GIGACHAT_AUTH_KEY` set server-side.
 - [ ] Analytics scripts installed.
 - [ ] Yandex Metrika goal events verified.
 - [ ] VK pixel events verified if used.
@@ -17,6 +16,6 @@
 - [ ] Responsive check: 320, 360, 375, 390, 430, 768, 1024, 1280, 1440, 1920.
 - [ ] Console has no production errors.
 - [ ] Forms tested end-to-end.
-- [ ] Chat tested with and without GigaChat key.
+- [ ] Chat2Desk and the local manager fallback tested.
 - [ ] VK notification tested end-to-end.
 - [ ] Backups and rollback plan prepared.

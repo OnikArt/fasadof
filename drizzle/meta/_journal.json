@@ -36,6 +36,20 @@
       "when": 1788696000000,
       "tag": "0004_vps_vk_max",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788782400000,
+      "tag": "0005_chat_auto_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788868800000,
+      "tag": "0006_lead_lifecycle_audit",
+      "breakpoints": true
     }
   ]
 }

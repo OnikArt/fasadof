@@ -1,12 +1,13 @@
 "use client";
+import { apiErrorMessage } from "@/features/api-error";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { formatPrice, productCategories, type Product, type ProductCategory } from "@/data/products";
 
 type View = "dashboard" | "products" | "leads" | "employees" | "analytics" | "settings";
 type ProductStatus = "published" | "hidden" | "archived";
-type LeadStatus = "NEW" | "IN_PROGRESS" | "DONE";
+type LeadStatus = "NEW" | "IN_PROGRESS" | "DONE" | "REJECTED";
 type VkSyncStatus = "synced" | "create" | "enrich" | "difference" | "confirm" | "site_only" | "error";
 
 type VkSyncRow = {
@@ -112,6 +113,7 @@ const leadStatuses: { value: LeadStatus; label: string }[] = [
   { value: "NEW", label: "Новая" },
   { value: "IN_PROGRESS", label: "В работе" },
   { value: "DONE", label: "Завершена" },
+  { value: "REJECTED", label: "Отклонена" },
 ];
 
 export function SupportAdmin({ manager }: { manager: AdminManager }) {
@@ -129,6 +131,10 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
   const [integrationBusy, setIntegrationBusy] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [leads, setLeads] = useState<AdminLead[]>([]);
+  const [leadStatusFilter, setLeadStatusFilter] = useState<LeadStatus | "ALL">("ALL");
+  const [leadPendingDelete, setLeadPendingDelete] = useState<AdminLead | null>(null);
+  const [leadNotice, setLeadNotice] = useState("");
+  const deleteDialogRef = useRef<HTMLDialogElement | null>(null);
   const [ratings, setRatings] = useState<ChatRating[]>([]);
   const [ratingFilter, setRatingFilter] = useState<number | "ALL">("ALL");
   const [employeeForm, setEmployeeForm] = useState({ name: "", email: "", password: "", role: "MANAGER" as "ADMIN" | "MANAGER" });
@@ -139,6 +145,10 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
   const hiddenCount = products.filter((product) => product.status === "hidden").length;
   const archivedCount = products.filter((product) => product.status === "archived").length;
   const newLeadCount = leads.filter((lead) => lead.status === "NEW").length;
+  const filteredLeads = useMemo(
+    () => leadStatusFilter === "ALL" ? leads : leads.filter((lead) => lead.status === leadStatusFilter),
+    [leadStatusFilter, leads],
+  );
 
   const filteredProducts = useMemo(() => {
     const query = productSearch.trim().toLowerCase();
@@ -214,6 +224,13 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
     return () => window.clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const dialog = deleteDialogRef.current;
+    if (!dialog) return;
+    if (leadPendingDelete && !dialog.open) dialog.showModal();
+    if (!leadPendingDelete && dialog.open) dialog.close();
+  }, [leadPendingDelete]);
+
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
     window.location.assign("/admin/login");
@@ -283,6 +300,7 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
 
   async function updateLead(id: number, status: LeadStatus) {
     setError("");
+    setLeadNotice("");
     try {
       const response = await fetch("/api/admin/leads", {
         method: "PATCH",
@@ -295,6 +313,24 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
       setLeads(payload.leads);
     } catch {
       setError("Не удалось изменить статус заявки.");
+    }
+  }
+
+  async function deleteLead() {
+    if (!leadPendingDelete) return;
+    setError("");
+    setLeadNotice("");
+    try {
+      const response = await fetch(`/api/admin/leads?id=${leadPendingDelete.id}`, { method: "DELETE", credentials: "include" });
+      const payload = (await response.json()) as { leads?: AdminLead[]; maxNotified?: boolean; error?: string };
+      if (!response.ok || !payload.leads) throw new Error(payload.error || "Lead delete failed");
+      setLeads(payload.leads);
+      setLeadPendingDelete(null);
+      setLeadNotice(payload.maxNotified
+        ? `Заявка #${leadPendingDelete.id} удалена. Уведомление отправлено в MAX.`
+        : `Заявка #${leadPendingDelete.id} удалена. MAX временно недоступен, история сохранена.`);
+    } catch (deleteError) {
+      setError(apiErrorMessage(deleteError, "Не удалось удалить заявку."));
     }
   }
 
@@ -315,7 +351,7 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
       setVkConfirmations({});
       setIntegrationStatus(`Сравнение готово: ${payload.rows.length} строк.`);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Не удалось получить каталог VK.");
+      setError(apiErrorMessage(error, "Не удалось получить каталог VK."));
     } finally {
       setIntegrationBusy(false);
     }
@@ -334,16 +370,17 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
       });
       const payload = await response.json() as {
         products?: AdminProduct[];
-        summary?: { created: number; enriched: number; updated: number; unchanged: number; errors: number };
+        summary?: { created: number; enriched: number; updated: number; unchanged: number; review: number; errors: number; images: number };
+        maxNotified?: boolean;
         error?: string;
       };
       if (!response.ok || !payload.summary) throw new Error(payload.error || "VK sync failed");
       if (payload.products) setProducts(payload.products);
       const value = payload.summary;
-      setIntegrationStatus(`Создано: ${value.created}. Дополнено: ${value.enriched}. Обновлено: ${value.updated}. Без изменений: ${value.unchanged}. Ошибок: ${value.errors}.`);
+      setIntegrationStatus(`✅ Синхронизация завершена. Создано: ${value.created}. Дополнено: ${value.enriched}. Обновлено: ${value.updated}. Без изменений: ${value.unchanged}. Требуют проверки: ${value.review}. Ошибок: ${value.errors}. Изображений: ${value.images}.`);
       setVkSyncRows(null);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Синхронизация VK не выполнена.");
+      setError(apiErrorMessage(error, "Синхронизация VK не выполнена."));
     } finally {
       setIntegrationBusy(false);
     }
@@ -359,7 +396,7 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
       if (!response.ok) throw new Error(payload.error || "MAX test failed");
       setIntegrationStatus("Тестовое сообщение отправлено в MAX.");
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Не удалось отправить тестовое сообщение MAX.");
+      setError(apiErrorMessage(error, "Не удалось отправить тестовое сообщение MAX."));
     } finally {
       setIntegrationBusy(false);
     }
@@ -439,14 +476,23 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
               <h2>Заявки</h2>
             </div>
           </header>
+          <div className="lead-status-filter" aria-label="Фильтр заявок по статусу">
+            <button className={leadStatusFilter === "ALL" ? "active" : ""} onClick={() => setLeadStatusFilter("ALL")} type="button">Все</button>
+            {leadStatuses.map((item) => (
+              <button className={leadStatusFilter === item.value ? "active" : ""} key={item.value} onClick={() => setLeadStatusFilter(item.value)} type="button">
+                {item.label}
+              </button>
+            ))}
+          </div>
+          {leadNotice && <p className="admin-lead-notice" role="status">{leadNotice}</p>}
           <div className="lead-admin-list">
-            {leads.length === 0 && (
+            {filteredLeads.length === 0 && (
               <div className="empty-state">
                 <strong>Пока нет заявок.</strong>
                 <p>После отправки формы сайта заявки появятся здесь. MAX-уведомления отключены до модерации.</p>
               </div>
             )}
-            {leads.map((lead) => (
+            {filteredLeads.map((lead) => (
               <article className="lead-admin-card" key={lead.id}>
                 <div className="lead-admin-main">
                   <p className="eyebrow">#{lead.id} · {statusLabel(lead.status)}</p>
@@ -467,6 +513,15 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
                       {item.label}
                     </button>
                   ))}
+                  <button
+                    className="lead-delete-button"
+                    disabled={lead.status !== "DONE" && lead.status !== "REJECTED"}
+                    onClick={() => setLeadPendingDelete(lead)}
+                    title={lead.status === "DONE" || lead.status === "REJECTED" ? "Удалить заявку" : "Сначала завершите или отклоните заявку"}
+                    type="button"
+                  >
+                    Удалить
+                  </button>
                 </div>
               </article>
             ))}
@@ -482,10 +537,10 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
               <h2>Товары</h2>
             </div>
             <div className="admin-header-actions">
+              <button className="btn primary" type="button" onClick={() => setProductForm(emptyProductForm())}>+ Добавить товар</button>
               <button className="btn secondary" disabled={integrationBusy} type="button" onClick={() => void previewVkSync()}>
                 {integrationBusy ? "Сверяем..." : "Синхронизировать с VK"}
               </button>
-              <button className="btn primary" type="button" onClick={() => setProductForm(emptyProductForm())}>+ Добавить товар</button>
             </div>
           </header>
           {vkSyncRows && (
@@ -646,7 +701,7 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
             {(["ALL", 5, 4, 3, 2, 1] as const).map((value) => <button className={ratingFilter === value ? "active" : ""} key={value} onClick={() => setRatingFilter(value)} type="button">{value === "ALL" ? "Все" : `${value} ★`}</button>)}
           </div>
           <div className="rating-list">
-            {ratings.map((item) => <article className="rating-card" key={item.id}><strong>{"★".repeat(item.rating)}{"☆".repeat(5 - item.rating)}</strong><span>{item.comment || "Без комментария"}</span><small>{item.employeeId || "AI / не назначен"}</small><time>{new Date(item.createdAt).toLocaleString("ru-RU")}</time></article>)}
+            {ratings.map((item) => <article className="rating-card" key={item.id}><strong>{"★".repeat(item.rating)}{"☆".repeat(5 - item.rating)}</strong><span>{item.comment || "Без комментария"}</span><small>{item.employeeId || "Не назначен"}</small><time>{new Date(item.createdAt).toLocaleString("ru-RU")}</time></article>)}
           </div>
         </section>
       )}
@@ -667,6 +722,22 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
           {integrationStatus && <p className="admin-integration-status" role="status">{integrationStatus}</p>}
         </section>
       )}
+
+      <dialog
+        className="admin-confirm-dialog"
+        ref={deleteDialogRef}
+        onCancel={(event) => { event.preventDefault(); setLeadPendingDelete(null); }}
+      >
+        <div className="admin-confirm-content">
+          <p className="eyebrow">Подтверждение</p>
+          <h2>Удалить завершённую заявку?</h2>
+          <p>Заявка исчезнет из рабочего списка. Запись о сотруднике и действии останется в журнале аудита.</p>
+          <div>
+            <button className="btn secondary" onClick={() => setLeadPendingDelete(null)} type="button">Отмена</button>
+            <button className="btn primary" onClick={() => void deleteLead()} type="button">Удалить заявку</button>
+          </div>
+        </div>
+      </dialog>
 
       {error && <p className="field-error admin-floating-error" role="alert">{error}</p>}
     </div>

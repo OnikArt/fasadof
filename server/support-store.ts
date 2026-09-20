@@ -1,6 +1,6 @@
 import { getDatabase } from "@/server/database";
 
-export type ChatStatus = "AI" | "WAITING_OPERATOR" | "OPERATOR" | "CLOSED";
+export type ChatStatus = "AUTO" | "WAITING_OPERATOR" | "OPERATOR" | "CLOSED";
 export type ChatRole = "user" | "assistant" | "operator" | "system";
 
 export type ChatMessageRecord = {
@@ -190,7 +190,7 @@ export async function requestOperator(sessionId: string) {
   await appendMessage({
     sessionId,
     role: "system",
-    content: "Диалог передан менеджеру. Если менеджер не ответит вовремя, AI автоматически вернётся в чат.",
+    content: "Диалог передан менеджеру. Сообщения сохраняются в очереди поддержки.",
   });
 }
 
@@ -204,11 +204,11 @@ export async function resumeTimedOutWaitingSessions() {
       .bind("WAITING_OPERATOR", cutoff)
       .all<D1ChatSession>();
     for (const row of result.results ?? []) {
-      await updateSessionStatus(row.id, "AI");
+      await updateSessionStatus(row.id, "AUTO");
       await appendMessage({
         sessionId: row.id,
         role: "system",
-        content: "Менеджер не ответил вовремя. AI снова доступен и продолжит помогать.",
+        content: "Менеджер пока не ответил. Справочный помощник продолжит отвечать по данным сайта.",
       });
     }
     return;
@@ -216,12 +216,12 @@ export async function resumeTimedOutWaitingSessions() {
 
   const stale = memoryStore().sessions.filter((session) => session.status === "WAITING_OPERATOR" && session.updatedAt < cutoff);
   for (const session of stale) {
-    session.status = "AI";
+    session.status = "AUTO";
     session.updatedAt = new Date().toISOString();
     await appendMessage({
       sessionId: session.id,
       role: "system",
-      content: "Менеджер не ответил вовремя. AI снова доступен и продолжит помогать.",
+      content: "Менеджер пока не ответил. Справочный помощник продолжит отвечать по данным сайта.",
     });
   }
 }
@@ -422,7 +422,7 @@ function createNewSession(input: CustomerSessionInput): ChatSessionRecord {
   const now = new Date().toISOString();
   return {
     id: randomId("chat"),
-    status: "AI",
+    status: "AUTO",
     page: input.page ?? "",
     source: input.source ?? readSource(input.attribution),
     attribution: input.attribution ?? {},
@@ -441,7 +441,7 @@ async function ensureD1Schema(db: D1DatabaseLike) {
   if (store.schemaReady) return;
 
   await db.batch([
-    db.prepare("CREATE TABLE IF NOT EXISTS chat_sessions (id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'AI', page TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT 'Direct', customer_token TEXT NOT NULL DEFAULT '', operator_id TEXT, operator_name TEXT, attribution TEXT NOT NULL DEFAULT '{}', contact TEXT, closed_at TEXT, closed_by TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS chat_sessions (id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'AUTO', page TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT 'Direct', customer_token TEXT NOT NULL DEFAULT '', operator_id TEXT, operator_name TEXT, attribution TEXT NOT NULL DEFAULT '{}', contact TEXT, closed_at TEXT, closed_by TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
     db.prepare("CREATE TABLE IF NOT EXISTS chat_messages (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, author_name TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
     db.prepare("CREATE TABLE IF NOT EXISTS chat_ratings (id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, rating INTEGER NOT NULL, comment TEXT NOT NULL DEFAULT '', employee_id TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
     db.prepare("CREATE TABLE IF NOT EXISTS operators (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'MANAGER', is_active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, last_login_at TEXT)"),

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { LeadForm } from "@/components/LeadForm";
 import { ProductBackButton } from "@/components/ProductBackButton";
 import { ProductCard } from "@/components/ProductCard";
-import { ProductObject } from "@/components/ProductObject";
+import { ProductGallery } from "@/components/ProductGallery";
 import { SiteHeader } from "@/components/SiteHeader";
 import { BUSINESS } from "@/config/business";
 import { getCategoryPage, getCategoryProducts, categoryPages } from "@/data/categoryPages";
@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       openGraph: {
         title: `${product.name} - ФасадоФ`,
         description: product.description,
-        images: ["/og.png"],
+        images: [product.image.startsWith("/") ? product.image : "/og.png"],
         type: "website",
       },
     };
@@ -102,9 +102,9 @@ export default async function ProductOrCategoryPage({ params }: PageProps) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Главная", item: "/" },
-      { "@type": "ListItem", position: 2, name: "Каталог", item: "/catalog" },
-      { "@type": "ListItem", position: 3, name: product.name, item: `/catalog/${product.slug}` },
+      { "@type": "ListItem", position: 1, name: "Главная", item: BUSINESS.siteUrl },
+      { "@type": "ListItem", position: 2, name: "Каталог", item: `${BUSINESS.siteUrl}/catalog` },
+      { "@type": "ListItem", position: 3, name: product.name, item: `${BUSINESS.siteUrl}/catalog/${product.slug}` },
     ],
   };
 
@@ -116,16 +116,7 @@ export default async function ProductOrCategoryPage({ params }: PageProps) {
           <ProductBackButton />
         </div>
         <section className="section product-detail-hero">
-          <div className="product-gallery">
-            <div className="product-gallery-main">
-              <ProductObject product={product} size="large" variant="stack" />
-            </div>
-            <div className="product-gallery-thumbs" aria-label="Варианты просмотра материала">
-              <ProductObject product={product} size="compact" />
-              <ProductObject product={product} size="compact" variant="slab" />
-              <ProductObject product={product} size="compact" variant="stack" />
-            </div>
-          </div>
+          <ProductGallery product={product} />
 
           <aside className="product-info">
             <nav className="breadcrumbs" aria-label="Хлебные крошки">
@@ -169,7 +160,7 @@ export default async function ProductOrCategoryPage({ params }: PageProps) {
             <div className="section-kicker">Расчет</div>
             <div className="section-heading">
               <h2 id="product-order-title">Расчет материала</h2>
-              <p>Форма передаст выбранный материал, страницу и attribution в server-side API.</p>
+              <p>Оставьте контакты: менеджер уточнит размеры и подготовит расчёт выбранного материала.</p>
             </div>
           </div>
           <LeadForm product={product.name} />
@@ -206,9 +197,9 @@ async function CategoryLanding({ slug }: { slug: string }) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Главная", item: "/" },
-      { "@type": "ListItem", position: 2, name: "Каталог", item: "/catalog" },
-      { "@type": "ListItem", position: 3, name: category.title, item: `/catalog/${category.slug}` },
+      { "@type": "ListItem", position: 1, name: "Главная", item: BUSINESS.siteUrl },
+      { "@type": "ListItem", position: 2, name: "Каталог", item: `${BUSINESS.siteUrl}/catalog` },
+      { "@type": "ListItem", position: 3, name: category.title, item: `${BUSINESS.siteUrl}/catalog/${category.slug}` },
     ],
   };
 

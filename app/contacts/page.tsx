@@ -33,7 +33,7 @@ export default function ContactsPage() {
             <strong>{BUSINESS.delivery.label}</strong>
             <span>{BUSINESS.workingHours.short}</span>
             <span>{BUSINESS.workingHours.weekend}</span>
-            <p>AI-помощник доступен на сайте. Менеджеры отвечают в рабочее время.</p>
+            <p>Онлайн-чат доступен на сайте. Менеджеры отвечают в рабочее время.</p>
           </article>
         </div>
       </main>

@@ -1,6 +1,6 @@
-import { createAIProvider, type AIEnv } from "@/server/ai";
 import { rateLimit } from "@/server/rate-limit";
 import { notifyChatMessageInMax, notifyOperatorRequestInMax } from "@/server/notifications";
+import { buildSupportReply } from "@/server/support-responder";
 import {
   appendMessage,
   getCustomerSession,
@@ -14,24 +14,11 @@ import {
 type ChatPayload = {
   action?: "message" | "request_operator" | "poll";
   message?: string;
-  history?: { role: "user" | "assistant"; content: string }[];
   sessionId?: string;
   customerToken?: string;
   page?: string;
   attribution?: unknown;
 };
-
-function readServerEnv(): AIEnv {
-  return {
-    AI_PROVIDER: process.env.AI_PROVIDER,
-    GIGACHAT_AUTH_KEY: process.env.GIGACHAT_AUTH_KEY,
-    GIGACHAT_SCOPE: process.env.GIGACHAT_SCOPE,
-    GIGACHAT_MODEL: process.env.GIGACHAT_MODEL,
-    GIGACHAT_BASE_URL: process.env.GIGACHAT_BASE_URL,
-    GIGACHAT_AUTH_URL: process.env.GIGACHAT_AUTH_URL,
-    GIGACHAT_TIMEOUT_MS: process.env.GIGACHAT_TIMEOUT_MS,
-  };
-}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -76,7 +63,7 @@ export async function POST(request: Request) {
         session: { ...session, status: "WAITING_OPERATOR" },
         messages,
         managerOnline: await hasOnlineManagers(),
-        reply: "Передал диалог менеджеру. Если менеджер не ответит вовремя, AI автоматически вернётся в чат.",
+        reply: "Передал диалог менеджеру. Ваши сообщения сохраняются в очереди поддержки.",
       });
     }
 
@@ -95,15 +82,11 @@ export async function POST(request: Request) {
       return Response.json({ session, messages, managerOnline: await hasOnlineManagers(), reply });
     }
 
-    const provider = createAIProvider(readServerEnv());
-    const ai = await provider.sendMessage({
-      message: payload.message,
-      history: payload.history,
-    });
-    await appendMessage({ sessionId: session.id, role: "assistant", content: ai.reply });
+    const reply = await buildSupportReply(payload.message);
+    await appendMessage({ sessionId: session.id, role: "assistant", content: reply });
 
     const messages = await listCustomerMessages(session.id, session.customerToken);
-    return Response.json({ session, messages, managerOnline: await hasOnlineManagers(), reply: ai.reply, provider: ai.provider });
+    return Response.json({ session, messages, managerOnline: await hasOnlineManagers(), reply, responder: "knowledge" });
   } catch {
     return Response.json(
       { reply: "Помощник временно недоступен. Оставьте вопрос менеджеру." },

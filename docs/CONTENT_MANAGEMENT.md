@@ -2,7 +2,7 @@
 
 ## Products and prices
 
-Edit `data/products.ts`. Catalogue cards, product pages, material explorer and AI knowledge base read from this file.
+Seed products live in `data/products.ts`; the production catalogue is persisted in SQLite and managed from the admin panel. Catalogue cards, product pages, the material explorer and the local support knowledge base read from the product repository.
 
 Do not add invented prices. Use `priceOnRequest: true` when the price needs individual calculation.
 

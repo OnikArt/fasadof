@@ -9,6 +9,7 @@ User=fasadof
 Group=fasadof
 WorkingDirectory=/var/www/fasadof/fasadof
 Environment=NODE_ENV=production
+Environment=NODE_USE_SYSTEM_CA=1
 EnvironmentFile=/var/www/fasadof/fasadof/.env
 ExecStart=/usr/bin/npm run start
 Restart=on-failure

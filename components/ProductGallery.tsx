@@ -33,6 +33,7 @@ export function ProductGallery({ product }: { product: Product }) {
           if (Math.abs(delta) > 42) go(delta < 0 ? 1 : -1);
           setTouchStart(null);
         }}
+        aria-live="polite"
       >
         <ProductObject product={displayProduct} size="large" variant="stack" />
         {hasMultiple && (

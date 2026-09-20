@@ -14,11 +14,26 @@ export const leads = sqliteTable("leads", {
   attribution: text("attribution", { mode: "json" }).notNull(),
   status: text("status").notNull().default("NEW"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: text("deleted_at"),
+  deletedById: text("deleted_by_id"),
+  deletedByName: text("deleted_by_name"),
+  deletedByEmail: text("deleted_by_email"),
+});
+
+export const leadAuditEvents = sqliteTable("lead_audit_events", {
+  id: text("id").primaryKey(),
+  leadId: integer("lead_id").notNull(),
+  eventType: text("event_type").notNull(),
+  actorId: text("actor_id").notNull(),
+  actorName: text("actor_name").notNull(),
+  actorEmail: text("actor_email").notNull(),
+  previousStatus: text("previous_status").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const chatSessions = sqliteTable("chat_sessions", {
   id: text("id").primaryKey(),
-  status: text("status").notNull().default("AI"),
+  status: text("status").notNull().default("AUTO"),
   page: text("page").notNull().default(""),
   source: text("source").notNull().default("Direct"),
   customerToken: text("customer_token").notNull().default(""),

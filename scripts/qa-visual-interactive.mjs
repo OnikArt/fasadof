@@ -96,6 +96,51 @@ try {
     featuredContrast: [],
   };
 
+  const typographyViewports = [
+    [320, 568],
+    [360, 800],
+    [390, 844],
+    [430, 932],
+    [768, 1024],
+    [1024, 768],
+    [1366, 768],
+    [1440, 900],
+    [1600, 900],
+    [1920, 1080],
+  ];
+
+  for (const [width, height] of typographyViewports) {
+    await captureState(cdp, report, {
+      name: `typography-home-${width}x${height}`,
+      route: "/",
+      width,
+      height,
+    });
+    await captureState(cdp, report, {
+      name: `typography-product-${width}x${height}`,
+      route: "/catalog/aluminum-glass",
+      width,
+      height,
+    });
+  }
+
+  for (const [name, selector, width, height] of [
+    ["typography-materials-mobile", "#materials", 390, 844],
+    ["typography-materials-desktop", "#materials", 1440, 900],
+    ["typography-contacts-mobile", "#contacts", 390, 844],
+    ["typography-contacts-desktop", "#contacts", 1440, 900],
+    ["typography-footer-mobile", ".site-footer", 390, 844],
+    ["typography-footer-desktop", ".site-footer", 1440, 900],
+  ]) {
+    await captureState(cdp, report, {
+      name,
+      route: "/",
+      width,
+      height,
+      before: () => evaluate(cdp, `document.querySelector('${selector}')?.scrollIntoView({ block: 'start', behavior: 'instant' })`),
+    });
+  }
+
   await captureState(cdp, report, {
     name: "desktop-hero-1366x768",
     route: "/",

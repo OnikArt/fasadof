@@ -41,7 +41,7 @@ export async function applyVkSync(input: {
 }) {
   const rows = await compareCatalogs();
   const strategy = input.priceStrategy === "use-vk" ? "use-vk" : "preserve-site";
-  const summary = { created: 0, enriched: 0, updated: 0, unchanged: 0, errors: 0 };
+  const summary = { created: 0, enriched: 0, updated: 0, unchanged: 0, review: 0, errors: 0, images: 0 };
   const errors: { key: string; message: string }[] = [];
   const allSiteProducts = await listProducts({ includeHidden: true, status: "all" });
 
@@ -54,6 +54,7 @@ export async function applyVkSync(input: {
         if (!selectedId) {
           errors.push({ key: row.key, message: "Сопоставление требует подтверждения" });
           summary.errors += 1;
+          summary.review += 1;
           continue;
         }
         if (selectedId !== "create") {
@@ -67,6 +68,7 @@ export async function applyVkSync(input: {
       const storedImages = needsPhotos && photoUrls.length
         ? await persistRemoteProductImages({ ownerId: row.vk.owner_id, itemId: row.vk.id, urls: photoUrls })
         : [];
+      summary.images += storedImages.length;
       const next = buildProductInput(site, row.vk, storedImages, strategy);
       await saveProduct(next, input.manager);
 

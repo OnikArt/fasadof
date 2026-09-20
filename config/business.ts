@@ -1,6 +1,6 @@
 export const BUSINESS = {
   name: "ФасадоФ",
-  siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://fasadof.dwayneclifford50004.chatgpt.site",
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://fasadof36.ru",
   phone: {
     display: "8 903 850-24-04",
     formatted: "+7 (903) 850-24-04",
@@ -39,8 +39,8 @@ export const BUSINESS = {
   requiredOwnerData: [
     "production domain",
     "ID Яндекс Метрики",
-    "GigaChat auth key",
-    "VK community token и peer_id для уведомлений",
+    "VK community token",
+    "MAX bot token и group chat_id",
     "manager account credentials",
   ],
 } as const;

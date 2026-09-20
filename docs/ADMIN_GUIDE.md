@@ -16,7 +16,7 @@ Open `/admin/support`.
 
 Available statuses:
 
-- `AI`: AI is answering;
+- `AUTO`: the local knowledge-base responder is active;
 - `WAITING_OPERATOR`: customer requested a manager;
 - `OPERATOR`: manager took the dialog;
 - `CLOSED`: dialog is archived.
@@ -41,8 +41,8 @@ Lead requests currently go through the public form and are persisted through `/a
 
 ## Catalogue and content
 
-Products are edited in `data/products.ts`. Business information is edited in `config/business.ts`. See `docs/CONTENT_MANAGEMENT.md`.
+Products are managed in the admin catalogue and persisted in SQLite. Business information is edited in `config/business.ts`. See `docs/CONTENT_MANAGEMENT.md`.
 
 ## Security
 
-Never share `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, or `GIGACHAT_AUTH_KEY`. If a manager password is compromised, generate a new hash and session secret.
+Never share `ADMIN_PASSWORD_HASH` or `ADMIN_SESSION_SECRET`. If a manager password is compromised, generate a new hash and session secret.

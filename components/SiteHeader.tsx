@@ -16,9 +16,12 @@ const navItems = [
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
     document.body.classList.toggle("menu-lock", open);
+    if (open && !menuRef.current?.open) menuRef.current?.showModal();
+    if (!open && menuRef.current?.open) menuRef.current.close();
     if (open) closeRef.current?.focus();
 
     function onKeyDown(event: KeyboardEvent) {
@@ -62,6 +65,10 @@ export function SiteHeader() {
             <a href={item.href} key={item.href}>{item.label}</a>
           ))}
         </nav>
+        <a className="header-phone" href={BUSINESS.phone.href} aria-label={`Позвонить в ФасадоФ: ${BUSINESS.phone.display}`}>
+          <span className="header-phone-number">{BUSINESS.phone.display}</span>
+          <span className="header-phone-short">Позвонить</span>
+        </a>
         <a className="header-cta" href="/#order" onClick={() => analytics.track("cta_click", { place: "header", action: "lead" })}>
           Рассчитать
         </a>
@@ -83,8 +90,8 @@ export function SiteHeader() {
         </button>
       </div>
 
-      <div className={open ? "mobile-menu open" : "mobile-menu"} id="mobile-menu" aria-hidden={!open}>
-        <div className="mobile-menu-panel" role="dialog" aria-modal="true" aria-label="Меню сайта">
+      <dialog ref={menuRef} className={open ? "mobile-menu open" : "mobile-menu"} id="mobile-menu" aria-label="Меню сайта" onCancel={closeMenu}>
+        <div className="mobile-menu-panel">
           <div className="mobile-menu-top">
             <a href="/" onClick={closeMenu} aria-label="ФасадоФ - на главную">
               <BrandLogo compact />
@@ -103,11 +110,15 @@ export function SiteHeader() {
           </nav>
           <a className="mobile-menu-cta" href="/#order" onClick={closeMenu}>Рассчитать проект</a>
           <div className="mobile-menu-meta">
+            <a className="mobile-menu-phone" href={BUSINESS.phone.href} aria-label={`Позвонить в ФасадоФ: ${BUSINESS.phone.display}`}>
+              <span>Позвонить</span>
+              <strong>{BUSINESS.phone.display}</strong>
+            </a>
             <span>{BUSINESS.workingHoursShort}</span>
             <strong>{BUSINESS.freeDelivery}</strong>
           </div>
         </div>
-      </div>
+      </dialog>
     </header>
   );
 }

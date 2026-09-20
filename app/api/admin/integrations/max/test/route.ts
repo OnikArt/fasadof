@@ -1,5 +1,6 @@
 import { getManagerFromCookieHeader } from "@/server/manager-auth";
 import { createMaxBotClient } from "@/server/max-bot";
+import { integrationError } from "@/server/integration-errors";
 
 export async function POST(request: Request) {
   const manager = await getManagerFromCookieHeader(request.headers.get("cookie"));
@@ -11,10 +12,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    await client.sendText("✅ Связь с сайтом ФасадоФ установлена.");
+    await client.sendText("✅ ФасадоФ: production-связь с MAX работает.");
     return Response.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "MAX API unavailable";
-    return Response.json({ error: message }, { status: 502 });
+    const safe = integrationError(error, "MAX");
+    return Response.json({ error: safe.message, code: safe.code }, { status: 502 });
   }
 }

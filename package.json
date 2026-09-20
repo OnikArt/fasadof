@@ -13,6 +13,7 @@
     "preview": "node scripts/run-vinext.mjs start",
     "typecheck": "tsc --noEmit",
     "migrate:vps": "node --env-file=.env scripts/migrate-vps.mjs",
+    "integrations:check": "node --use-system-ca scripts/check-live-integrations.mjs",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .vercel",
     "qa:visual": "node scripts/qa-visual-interactive.mjs",

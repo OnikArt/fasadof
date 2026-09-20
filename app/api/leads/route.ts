@@ -2,8 +2,10 @@ import { normalizeLeadPayload, validateLead, type LeadPayload } from "@/server/l
 import { persistLead } from "@/server/lead-store";
 import { notifyLeadInMax } from "@/server/notifications";
 import { rateLimit } from "@/server/rate-limit";
+import { integrationLog } from "@/server/integration-errors";
 
 export async function POST(request: Request) {
+  const started = Date.now();
   try {
     const limited = rateLimit(request, "lead", 8, 60_000);
     if (limited) return limited;
@@ -22,15 +24,18 @@ export async function POST(request: Request) {
     const lead = normalizeLeadPayload(payload as LeadPayload);
     const persisted = await persistLead(lead);
     if (!persisted.persisted) {
+      integrationLog("lead", "/api/leads", started, new Error("storage unavailable"));
       return Response.json({ error: "Заявка не сохранена. Повторите отправку." }, { status: 503 });
     }
-    const max = await notifyLeadInMax(lead);
+    const max = await notifyLeadInMax(lead, persisted.id);
+    integrationLog("lead", "/api/leads", started);
 
     return Response.json(
       {
         ok: true,
         integration: {
           persisted: persisted.persisted,
+          leadId: persisted.id,
           maxNotified: max.sent,
           note: max.sent ? "Заявка сохранена и отправлена в MAX." : "Заявка сохранена. MAX временно недоступен.",
         },
@@ -38,7 +43,7 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Lead API failed", error);
-    return Response.json({ error: "Lead API unavailable" }, { status: 500 });
+    integrationLog("lead", "/api/leads", started, error);
+    return Response.json({ error: "Не удалось сохранить заявку. Позвоните нам или повторите попытку." }, { status: 500 });
   }
 }

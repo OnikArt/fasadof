@@ -68,6 +68,40 @@ async function render(path = "/") {
   );
 }
 
+test("integration failures return safe codes and diagnostics require login", async () => {
+  const restoreAdmin = installAdminEnv();
+  const keys = ["VK_GROUP_ID", "VK_ACCESS_TOKEN", "MAX_BOT_TOKEN", "MAX_MANAGER_CHAT_ID"];
+  const previous = keys.map(key => process.env[key]);
+  Object.assign(process.env, { VK_GROUP_ID: "123", VK_ACCESS_TOKEN: "secret-test-vk", MAX_BOT_TOKEN: "secret-test-max", MAX_MANAGER_CHAT_ID: "123" });
+  const originalFetch = globalThis.fetch;
+  try {
+    const worker = await loadWorker("sanitized-errors");
+    const call = (path, init = {}) => worker.fetch(new Request(`http://localhost${path}`, init), workerContext(), { waitUntil() {} });
+    assert.equal((await call("/api/admin/integrations/status")).status, 403);
+    const login = await call("/api/admin/login", { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.220" }, body: JSON.stringify({ email: "manager@example.com", password: "StrongPassword123" }) });
+    assert.equal(login.status, 200);
+    const cookie = login.headers.get("set-cookie");
+    globalThis.fetch = async () => { throw new TypeError("fetch failed secret-test-max", { cause: { code: "ECONNREFUSED" } }); };
+    const max = await call("/api/admin/integrations/max/test", { method: "POST", headers: { cookie } });
+    assert.equal(max.status, 502);
+    const maxBody = await max.json();
+    assert.equal(maxBody.code, "ECONNREFUSED");
+    assert.doesNotMatch(JSON.stringify(maxBody), /fetch failed|secret-test/);
+    globalThis.fetch = async () => Response.json({ error: { error_code: 5, error_msg: "secret-test-vk" } });
+    const vk = await call("/api/admin/integrations/vk/sync", { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ action: "preview" }) });
+    assert.equal(vk.status, 502);
+    const vkBody = await vk.json();
+    assert.equal(vkBody.code, "VK_5");
+    assert.doesNotMatch(JSON.stringify(vkBody), /secret-test/);
+    const status = await call("/api/admin/integrations/status", { headers: { cookie } });
+    assert.deepEqual(await status.json(), { database: "ok", vkConfigured: true, maxConfigured: true });
+  } finally {
+    globalThis.fetch = originalFetch;
+    keys.forEach((key, index) => { if (previous[index] === undefined) delete process.env[key]; else process.env[key] = previous[index]; });
+    restoreAdmin();
+  }
+});
+
 test("server-renders the ФасадоФ home page", async () => {
   const response = await render("/");
   assert.equal(response.status, 200);
@@ -77,12 +111,14 @@ test("server-renders the ФасадоФ home page", async () => {
   assert.match(html, /ФасадоФ/);
   assert.match(html, /Доставка/);
   assert.match(html, /Рассчитать проект/);
-  assert.match(html, /Сразу понятно, что можно заказать/);
+  assert.match(html, /Фасады под ваш интерьер/);
   assert.match(html, /Основные фасадные решения/);
   assert.match(html, /Chat2Desk/);
   assert.match(html, /8 903 850-24-04/);
   assert.match(html, /fasadof36@gmail.com/);
   assert.match(html, /Бесплатная доставка по Воронежу/);
+  assert.match(html, /FAQPage/);
+  assert.match(html, /Где можно посмотреть фасады и материалы вживую/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/);
 });
 
@@ -136,7 +172,7 @@ test("server-renders admin login and protects support route", async () => {
   assert.match(support.headers.get("location") ?? "", /\/admin\/login/);
 });
 
-test("chat API stops AI after manager request", async () => {
+test("chat API switches to manager queue after operator request", async () => {
   const worker = await loadWorker("chat-flow");
   const first = await worker.fetch(
     new Request("http://localhost/api/chat", {
@@ -233,7 +269,6 @@ test(".env.example documents active production variables", async () => {
   for (const name of [
     "NEXT_PUBLIC_SITE_URL",
     "NEXT_PUBLIC_CHAT2DESK_WIDGET_TOKEN",
-    "GIGACHAT_AUTH_KEY",
     "ADMIN_EMAIL",
     "ADMIN_PASSWORD_HASH",
     "ADMIN_SESSION_SECRET",
@@ -319,6 +354,95 @@ test("lead API persists data and remains successful when MAX is unavailable", as
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+  }
+});
+
+test("lead lifecycle protects active work, audits terminal deletion and keeps DB state when MAX fails", async () => {
+  const password = "StrongPassword123";
+  const restoreAdmin = installAdminEnv(password);
+  const previousMax = {
+    MAX_BOT_TOKEN: process.env.MAX_BOT_TOKEN,
+    MAX_MANAGER_CHAT_ID: process.env.MAX_MANAGER_CHAT_ID,
+  };
+  process.env.MAX_BOT_TOKEN = "test-token";
+  process.env.MAX_MANAGER_CHAT_ID = "123456";
+  const originalFetch = globalThis.fetch;
+  const { DatabaseSync } = await import("node:sqlite");
+  const auditDatabase = new DatabaseSync(join(testDataDir, "fasadof.sqlite"));
+  let deletionObservedAfterDb = false;
+
+  try {
+    const worker = await loadWorker("lead-lifecycle");
+    const call = (path, init = {}) => worker.fetch(new Request(`http://localhost${path}`, init), workerContext(), { waitUntil() {} });
+    const create = async (name, createdAt) => {
+      const response = await call("/api/leads", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.230" },
+        body: JSON.stringify({
+          name,
+          phone: "+7 903 850-24-04",
+          email: `${name.toLowerCase()}@example.com`,
+          message: "Lifecycle QA",
+          product: "Фасады",
+          material: "Эмаль",
+          area: "5 м²",
+          page: "/",
+          attribution: { firstTouch: { source: "Direct" }, lastTouch: { source: "Direct" } },
+          createdAt,
+        }),
+      });
+      assert.equal(response.status, 201);
+      return (await response.json()).integration.leadId;
+    };
+
+    const firstId = await create("Active", "2026-09-08T10:00:00.000Z");
+    const secondId = await create("Rejected", "2026-09-08T10:01:00.000Z");
+    const login = await call("/api/admin/login", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.231" },
+      body: JSON.stringify({ email: "manager@example.com", password }),
+    });
+    assert.equal(login.status, 200);
+    const cookie = login.headers.get("set-cookie") ?? "";
+    const adminCall = (path, init = {}) => call(path, { ...init, headers: { ...(init.headers ?? {}), cookie } });
+
+    assert.equal((await adminCall(`/api/admin/leads?id=${firstId}`, { method: "DELETE" })).status, 409);
+    assert.equal((await adminCall("/api/admin/leads", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: firstId, status: "IN_PROGRESS" }) })).status, 200);
+    assert.equal((await adminCall(`/api/admin/leads?id=${firstId}`, { method: "DELETE" })).status, 409);
+    assert.equal((await adminCall("/api/admin/leads", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: firstId, status: "DONE" }) })).status, 200);
+
+    globalThis.fetch = async (input, init) => {
+      if (String(input).startsWith("https://platform-api2.max.ru/")) {
+        if (String(init?.body).includes("удалена")) {
+          const row = auditDatabase.prepare("SELECT deleted_at FROM leads WHERE id = ?").get(firstId);
+          deletionObservedAfterDb = Boolean(row?.deleted_at);
+        }
+        throw new Error("MAX unavailable in lifecycle QA");
+      }
+      return originalFetch(input, init);
+    };
+
+    const deletedDone = await adminCall(`/api/admin/leads?id=${firstId}`, { method: "DELETE" });
+    assert.equal(deletedDone.status, 200);
+    assert.equal((await deletedDone.json()).maxNotified, false);
+    assert.equal(deletionObservedAfterDb, true);
+
+    assert.equal((await adminCall("/api/admin/leads", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: secondId, status: "REJECTED" }) })).status, 200);
+    assert.equal((await adminCall(`/api/admin/leads?id=${secondId}`, { method: "DELETE" })).status, 200);
+
+    const visible = await (await adminCall("/api/admin/leads")).json();
+    assert.equal(visible.leads.some((lead) => lead.id === firstId || lead.id === secondId), false);
+    const auditRows = auditDatabase.prepare("SELECT lead_id, actor_id, actor_name, actor_email, previous_status FROM lead_audit_events WHERE lead_id IN (?, ?) ORDER BY lead_id").all(firstId, secondId);
+    assert.deepEqual(auditRows.map((row) => row.previous_status), ["DONE", "REJECTED"]);
+    assert.ok(auditRows.every((row) => row.actor_id === "env-admin" && row.actor_name === "Алексей" && row.actor_email === "manager@example.com"));
+  } finally {
+    auditDatabase.close();
+    globalThis.fetch = originalFetch;
+    for (const [key, value] of Object.entries(previousMax)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    restoreAdmin();
   }
 });
 
@@ -720,7 +844,41 @@ test("MAX, VK callback and VK catalogue sync work without duplicates", async () 
       { waitUntil() {}, passThroughOnException() {} },
     );
     assert.equal(maxTest.status, 200);
-    assert.match(maxMessages[0].text, /Связь с сайтом ФасадоФ установлена/);
+    assert.match(maxMessages[0].text, /ФасадоФ: production-связь с MAX работает/);
+
+    const lead = await worker.fetch(
+      new Request("http://localhost/api/leads", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.202" },
+        body: JSON.stringify({
+          name: "Проверка MAX",
+          phone: "+7 903 850-24-04",
+          email: "lead@example.com",
+          message: "Тест единой цепочки",
+          product: "Фасады",
+          material: "Эмаль",
+          area: "5 м²",
+          page: "/catalog/enamel",
+          attribution: {
+            firstTouch: { source: "VK", utm_source: "vk", utm_medium: "social", utm_campaign: "qa" },
+            lastTouch: { source: "VK", utm_source: "vk", utm_medium: "social", utm_campaign: "qa" },
+          },
+          createdAt: new Date().toISOString(),
+        }),
+      }),
+      workerContext(),
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    assert.equal(lead.status, 201);
+    const leadPayload = await lead.json();
+    assert.equal(leadPayload.integration.persisted, true);
+    assert.equal(leadPayload.integration.maxNotified, true);
+    assert.ok(leadPayload.integration.leadId > 0);
+    const leadMessage = maxMessages.find((message) => /Новая заявка с сайта/.test(message.text));
+    assert.match(leadMessage.text, /Заявка #\d+/);
+    assert.match(leadMessage.text, /lead@example\.com/);
+    assert.match(leadMessage.text, /UTM: source=vk, medium=social, campaign=qa/);
+    assert.equal(leadMessage.attachments[0].payload.buttons[0][0].url, "https://fasadof36.ru/admin/support");
 
     const confirmation = await worker.fetch(
       new Request("http://localhost/api/integrations/vk/callback", {
@@ -784,6 +942,10 @@ test("MAX, VK callback and VK catalogue sync work without duplicates", async () 
     assert.equal(applied.summary.created, 1);
     assert.equal(applied.summary.enriched, 1);
     assert.equal(applied.summary.errors, 0);
+    assert.equal(applied.summary.images, 4);
+    assert.equal(applied.summary.review, 0);
+    assert.equal(applied.maxNotified, true);
+    assert.ok(maxMessages.some((message) => /Каталог ФасадоФ синхронизирован/.test(message.text)));
 
     const products = await worker.fetch(
       new Request("http://localhost/api/admin/products", { headers: { cookie } }),
@@ -820,6 +982,7 @@ test("MAX, VK callback and VK catalogue sync work without duplicates", async () 
     const repeated = await secondApply.json();
     assert.equal(repeated.summary.created, 0);
     assert.equal(repeated.summary.errors, 0);
+    assert.equal(repeated.summary.images, 0);
     assert.equal(repeated.products.filter((product) => product.vkMarketItemId === 202).length, 1);
   } finally {
     globalThis.fetch = originalFetch;

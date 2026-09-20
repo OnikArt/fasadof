@@ -6,16 +6,16 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(BUSINESS.siteUrl),
   title: {
-    default: "ФасадоФ - мебельные фасады и столешницы на заказ",
-    template: "%s - ФасадоФ",
+    default: "ФасадоФ — мебельные фасады и столешницы на заказ в Воронеже",
+    template: "%s — ФасадоФ",
   },
   description:
-    "Производство мебельных фасадов, столешниц и индивидуальных мебельных решений: эмаль, шпон, массив, ПЭТ, Fenix, камень, ART Beton.",
+    "Мебельные фасады и столешницы на заказ в Воронеже: эмаль, шпон, массив, ПЭТ, Fenix, ПВХ и камень. Подбор материала и расчёт проекта.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "ФасадоФ - premium showroom фасадов и столешниц",
+    title: "ФасадоФ — фасады и столешницы на заказ в Воронеже",
     description: `Мебельные фасады и столешницы на заказ. ${BUSINESS.delivery.label}. ${BUSINESS.workingHours.label}.`,
     url: "/",
     siteName: "ФасадоФ",
@@ -32,8 +32,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "ФасадоФ - мебельные фасады и столешницы",
-    description: "Premium showroom: фасады, столешницы, материалы и расчет проекта.",
+    title: "ФасадоФ — мебельные фасады и столешницы",
+    description: "Фасады, столешницы, подбор материалов и расчёт проекта в Воронеже.",
     images: ["/og.png"],
   },
   icons: {
@@ -71,6 +71,9 @@ export default function RootLayout({
 
   return (
     <html lang="ru">
+      <head>
+        <link rel="preload" href="/fonts/sofia-sans-variable.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
+      </head>
       <body>
         {children}
         <Chat2DeskWidget />

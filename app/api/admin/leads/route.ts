@@ -1,7 +1,8 @@
 import { getManagerFromCookieHeader } from "@/server/manager-auth";
-import { listLeads, updateLeadStatus, type LeadStatus } from "@/server/lead-store";
+import { listLeads, softDeleteLead, updateLeadStatus, type LeadStatus } from "@/server/lead-store";
+import { notifyLeadDeletionInMax } from "@/server/notifications";
 
-const statuses = new Set<LeadStatus>(["NEW", "IN_PROGRESS", "DONE"]);
+const statuses = new Set<LeadStatus>(["NEW", "IN_PROGRESS", "DONE", "REJECTED"]);
 
 async function requireManager(request: Request) {
   return getManagerFromCookieHeader(request.headers.get("cookie"));
@@ -27,4 +28,32 @@ export async function PATCH(request: Request) {
   if (!lead) return Response.json({ error: "Lead not found" }, { status: 404 });
 
   return Response.json({ lead, leads: await listLeads() });
+}
+
+export async function DELETE(request: Request) {
+  const manager = await requireManager(request);
+  if (!manager) return Response.json({ error: "Forbidden" }, { status: 403 });
+
+  const id = Number(new URL(request.url).searchParams.get("id"));
+  if (!Number.isInteger(id) || id <= 0) return Response.json({ error: "Invalid lead id" }, { status: 400 });
+
+  const deleted = await softDeleteLead(id, {
+    id: manager.id ?? manager.email,
+    name: manager.name,
+    email: manager.email,
+  });
+  if (deleted.result === "not-found") return Response.json({ error: "Lead not found" }, { status: 404 });
+  if (deleted.result === "not-terminal") {
+    return Response.json({ error: "Завершите или отклоните заявку перед удалением" }, { status: 409 });
+  }
+  if (deleted.result !== "deleted") return Response.json({ error: "Lead storage unavailable" }, { status: 503 });
+
+  const notification = await notifyLeadDeletionInMax({
+    leadId: id,
+    previousStatus: deleted.audit.previousStatus,
+    employeeName: manager.name,
+    deletedAt: deleted.audit.createdAt,
+  });
+
+  return Response.json({ ok: true, audit: deleted.audit, maxNotified: notification.sent, leads: await listLeads() });
 }

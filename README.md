@@ -1,6 +1,6 @@
 # ФасадоФ
 
-Production site for the Russian brand «ФасадоФ»: furniture fronts, countertops, catalogue management, lead forms, GigaChat support, manager takeover, MAX notifications and safe VK Market synchronization.
+Production site for the Russian brand «ФасадоФ»: furniture fronts, countertops, catalogue management, lead forms, Chat2Desk support, manager takeover, MAX notifications and safe VK Market synchronization.
 
 ## Stack
 
@@ -49,7 +49,7 @@ The script performs a fast-forward pull, clean `npm ci`, typecheck, safe migrati
 - `features/analytics/` - browser analytics event abstraction.
 - `features/attribution/` - first-touch and last-touch UTM/referrer capture.
 - `features/phone/` - shared Russian phone formatting, normalization and validation.
-- `server/` - server-only AI, persistent storage, VK/MAX integrations, auth, support and rate limiting.
+- `server/` - server-only persistence, local support responses, VK/MAX integrations, auth and rate limiting.
 - `db/schema.ts` and `drizzle/` - database schema and migrations.
 - `docs/` - deployment, admin, support, env and integration guides.
 
@@ -81,7 +81,6 @@ Use `.env.example` as the template. Server secrets must not use `NEXT_PUBLIC_*`.
 
 Required production integrations:
 
-- GigaChat: `GIGACHAT_AUTH_KEY`;
 - Chat2Desk: `NEXT_PUBLIC_CHAT2DESK_WIDGET_TOKEN`;
 - Admin auth: `ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`;
 - VK: `VK_GROUP_ID`, `VK_ACCESS_TOKEN`, `VK_CALLBACK_SECRET`, `VK_CALLBACK_CONFIRMATION`;
@@ -95,7 +94,6 @@ Required production integrations:
 - `docs/ADMIN_GUIDE.md`
 - `docs/ADMIN_SETUP.md`
 - `docs/SUPPORT_CHAT.md`
-- `docs/AI_CHAT_SETUP.md`
 - `docs/PRODUCTION_DEPLOY.md`
 - `docs/VPS_DEPLOY.md`
 - `docs/VK_MAX_INTEGRATION.md`
