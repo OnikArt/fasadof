@@ -1,5 +1,5 @@
 import { getManagerFromCookieHeader } from "@/server/manager-auth";
-import { listLeads, softDeleteLead, updateLeadStatus, type LeadStatus } from "@/server/lead-store";
+import { getLead, listLeads, softDeleteLead, updateLeadStatus, type LeadStatus } from "@/server/lead-store";
 import { notifyLeadDeletionInMax } from "@/server/notifications";
 
 const statuses = new Set<LeadStatus>(["NEW", "IN_PROGRESS", "DONE", "REJECTED"]);
@@ -12,6 +12,11 @@ export async function GET(request: Request) {
   const manager = await requireManager(request);
   if (!manager) return Response.json({ error: "Forbidden" }, { status: 403 });
 
+  const id = Number(new URL(request.url).searchParams.get("id"));
+  if (Number.isInteger(id) && id > 0) {
+    const lead = await getLead(id);
+    return lead ? Response.json({ lead }) : Response.json({ error: "Lead not found" }, { status: 404 });
+  }
   return Response.json({ leads: await listLeads() });
 }
 

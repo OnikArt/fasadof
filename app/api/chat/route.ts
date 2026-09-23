@@ -3,6 +3,7 @@ import { notifyChatMessageInMax, notifyOperatorRequestInMax } from "@/server/not
 import { buildSupportReply } from "@/server/support-responder";
 import {
   appendMessage,
+  findChatCommand,
   getCustomerSession,
   getOrCreateCustomerSession,
   hasOnlineManagers,
@@ -56,11 +57,12 @@ export async function POST(request: Request) {
     }
 
     if (action === "request_operator") {
-      await requestOperator(session.id);
-      await notifyOperatorRequestInMax({ sessionId: session.id, page: session.page });
+      const requested = await requestOperator(session.id);
+      if (requested) await notifyOperatorRequestInMax({ sessionId: session.id, page: session.page });
+      const updatedSession = await getCustomerSession(session.id, session.customerToken) ?? session;
       const messages = await listCustomerMessages(session.id, session.customerToken);
       return Response.json({
-        session: { ...session, status: "WAITING_OPERATOR" },
+        session: updatedSession,
         messages,
         managerOnline: await hasOnlineManagers(),
         reply: "Передал диалог менеджеру. Ваши сообщения сохраняются в очереди поддержки.",
@@ -74,7 +76,7 @@ export async function POST(request: Request) {
     await appendMessage({ sessionId: session.id, role: "user", content: payload.message.trim() });
     await notifyChatMessageInMax({ sessionId: session.id, message: payload.message.trim(), page: session.page });
 
-    if (session.status === "WAITING_OPERATOR" || session.status === "OPERATOR" || session.status === "CLOSED") {
+    if (session.status === "WAITING_MANAGER" || session.status === "IN_PROGRESS" || session.status === "CLOSED") {
       const messages = await listCustomerMessages(session.id, session.customerToken);
       const reply = session.status === "CLOSED"
         ? "Диалог закрыт. Если вопрос актуален, начните новый чат."
@@ -82,7 +84,8 @@ export async function POST(request: Request) {
       return Response.json({ session, messages, managerOnline: await hasOnlineManagers(), reply });
     }
 
-    const reply = await buildSupportReply(payload.message);
+    const command = payload.message.trim().startsWith("/") ? await findChatCommand(payload.message) : null;
+    const reply = command?.response ?? await buildSupportReply(payload.message);
     await appendMessage({ sessionId: session.id, role: "assistant", content: reply });
 
     const messages = await listCustomerMessages(session.id, session.customerToken);

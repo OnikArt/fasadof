@@ -14,7 +14,7 @@ npm run admin:create -- manager@example.com "very-strong-password" "Алексе
 
 ## Manager creation
 
-Текущая production-схема поддерживает одного менеджера через env. Для нескольких операторов используйте таблицу `operators` и отдельный UI создания аккаунтов.
+Первый администратор задаётся через env. После входа он создаёт остальных учётных записей в разделе «Сотрудники». Сотрудники хранятся в `operators` и могут входить без отдельных `ADMIN_EMAIL`/`ADMIN_PASSWORD_HASH`; общий `ADMIN_SESSION_SECRET` обязателен.
 
 ## Online/offline
 
@@ -26,11 +26,11 @@ npm run admin:create -- manager@example.com "very-strong-password" "Алексе
 
 ## Support queue
 
-Диалоги имеют статусы `AUTO`, `WAITING_OPERATOR`, `OPERATOR`, `CLOSED`. Очередь `/admin/support` позволяет фильтровать статусы, брать диалог, отвечать и закрывать.
+Диалоги имеют статусы `NEW`, `WAITING_MANAGER`, `IN_PROGRESS`, `CLOSED`. Очередь `/admin/support` позволяет фильтровать статусы, брать диалог, отвечать, закрывать, очищать и архивировать.
 
 ## Replies
 
-Если менеджер отвечает в диалоге, сервер автоматически переводит разговор в `OPERATOR` и сохраняет сообщение как `operator`.
+Если менеджер отвечает в диалоге, сервер переводит разговор в `IN_PROGRESS` и сохраняет сообщение как `operator`.
 
 ## Logout
 

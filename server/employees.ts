@@ -20,6 +20,7 @@ export type PublicEmployee = Omit<EmployeeRecord, "passwordHash"> & {
   averageRating: number | null;
   ratingCount: number;
   dialogCount: number;
+  availability: "ONLINE" | "BUSY" | "OFFLINE";
 };
 
 type D1PreparedStatement = {
@@ -64,6 +65,7 @@ export async function listEmployees(env = process.env) {
       averageRating: null,
       ratingCount: 0,
       dialogCount: 0,
+      availability: "OFFLINE",
     });
   }
 
@@ -184,6 +186,8 @@ async function toPublicEmployee(employee: EmployeeRecord): Promise<PublicEmploye
     listConversations("ALL"),
   ]);
   const ratingTotal = ratings.reduce((sum, item) => sum + item.rating, 0);
+  const isBusy = dialogs.some((dialog) => dialog.operatorId === employee.email && dialog.status === "IN_PROGRESS");
+  const isOnline = Date.now() - new Date(employee.updatedAt).getTime() < 45_000;
 
   return {
     id: employee.id,
@@ -197,6 +201,7 @@ async function toPublicEmployee(employee: EmployeeRecord): Promise<PublicEmploye
     averageRating: ratings.length ? ratingTotal / ratings.length : null,
     ratingCount: ratings.length,
     dialogCount: dialogs.filter((dialog) => dialog.operatorId === employee.email).length,
+    availability: isBusy ? "BUSY" : isOnline ? "ONLINE" : "OFFLINE",
   };
 }
 

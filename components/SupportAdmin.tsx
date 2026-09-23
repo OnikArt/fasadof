@@ -3,9 +3,14 @@ import { apiErrorMessage } from "@/features/api-error";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { ProductImageUploader } from "@/components/ProductImageUploader";
 import { formatPrice, productCategories, type Product, type ProductCategory } from "@/data/products";
 
-type View = "dashboard" | "products" | "leads" | "employees" | "analytics" | "settings";
+type View = "dashboard" | "dialogs" | "commands" | "products" | "leads" | "employees" | "analytics" | "settings";
+type ChatStatus = "NEW" | "WAITING_MANAGER" | "IN_PROGRESS" | "CLOSED";
+type AdminConversation = { id: string; status: ChatStatus; page: string; source: string; operatorId: string | null; operatorName: string | null; archivedAt: string | null; canReply: boolean; canClose: boolean; createdAt: string; updatedAt: string };
+type AdminChatMessage = { id: string; role: "user" | "assistant" | "operator" | "system"; content: string; authorName: string | null; createdAt: string };
+type CategoryRecord = { slug: string; name: string; description: string };
 type ProductStatus = "published" | "hidden" | "archived";
 type LeadStatus = "NEW" | "IN_PROGRESS" | "DONE" | "REJECTED";
 type VkSyncStatus = "synced" | "create" | "enrich" | "difference" | "confirm" | "site_only" | "error";
@@ -45,6 +50,7 @@ type Employee = {
   averageRating: number | null;
   ratingCount: number;
   dialogCount: number;
+  availability: "ONLINE" | "BUSY" | "OFFLINE";
 };
 
 type ChatRating = {
@@ -55,6 +61,8 @@ type ChatRating = {
   employeeId: string | null;
   createdAt: string;
 };
+
+type ChatCommand = { id: string; name: string; command: string; response: string; enabled: boolean };
 
 type AdminLead = {
   id: number;
@@ -140,11 +148,23 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
   const [employeeForm, setEmployeeForm] = useState({ name: "", email: "", password: "", role: "MANAGER" as "ADMIN" | "MANAGER" });
   const [error, setError] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [conversations, setConversations] = useState<AdminConversation[]>([]);
+  const [conversationStatus, setConversationStatus] = useState<ChatStatus | "ALL">("ALL");
+  const [selectedConversation, setSelectedConversation] = useState<AdminConversation | null>(null);
+  const [conversationMessages, setConversationMessages] = useState<AdminChatMessage[]>([]);
+  const [reply, setReply] = useState("");
+  const conversationRequestRef = useRef(0);
+  const [showArchivedDialogs, setShowArchivedDialogs] = useState(false);
+  const [commands, setCommands] = useState<ChatCommand[]>([]);
+  const [commandForm, setCommandForm] = useState({ id: "", name: "", command: "", response: "", enabled: true });
+  const [categories, setCategories] = useState<CategoryRecord[]>([]);
+  const [categoryForm, setCategoryForm] = useState({ originalSlug: "", slug: "", name: "", description: "" });
 
   const publishedCount = products.filter((product) => (product.status ?? "published") === "published").length;
   const hiddenCount = products.filter((product) => product.status === "hidden").length;
   const archivedCount = products.filter((product) => product.status === "archived").length;
   const newLeadCount = leads.filter((lead) => lead.status === "NEW").length;
+  const waitingDialogCount = conversations.filter((item) => item.status === "WAITING_MANAGER").length;
   const filteredLeads = useMemo(
     () => leadStatusFilter === "ALL" ? leads : leads.filter((lead) => lead.status === leadStatusFilter),
     [leadStatusFilter, leads],
@@ -165,6 +185,13 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
     if (!response.ok) return;
     const payload = (await response.json()) as { products: AdminProduct[] };
     setProducts(payload.products);
+  }, []);
+
+  const loadCategories = useCallback(async () => {
+    const response = await fetch("/api/admin/categories", { credentials: "include" });
+    if (!response.ok) return;
+    const payload = await response.json() as { categories: CategoryRecord[] };
+    setCategories(payload.categories);
   }, []);
 
   const loadEmployees = useCallback(async () => {
@@ -190,11 +217,31 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
     setRatings(payload.ratings);
   }, [ratingFilter]);
 
+  const loadConversations = useCallback(async (sessionId?: string) => {
+    const requestId = ++conversationRequestRef.current;
+    const params = new URLSearchParams({ status: conversationStatus, archived: showArchivedDialogs ? "1" : "0" });
+    if (sessionId) params.set("sessionId", sessionId);
+    const response = await fetch(`/api/admin/conversations?${params}`, { credentials: "include", cache: "no-store" });
+    if (!response.ok) return;
+    const payload = await response.json() as { conversations: AdminConversation[]; session: AdminConversation | null; messages: AdminChatMessage[] };
+    if (requestId !== conversationRequestRef.current) return;
+    setConversations(payload.conversations);
+    setSelectedConversation(payload.session);
+    setConversationMessages(payload.messages);
+  }, [conversationStatus, showArchivedDialogs]);
+
+  const loadCommands = useCallback(async () => {
+    const response = await fetch("/api/admin/chat-commands", { credentials: "include" });
+    if (!response.ok) return;
+    setCommands(((await response.json()) as { commands: ChatCommand[] }).commands);
+  }, []);
+
   useEffect(() => {
     if (!["dashboard", "products", "analytics"].includes(view)) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadProducts();
-  }, [loadProducts, view]);
+    if (isAdmin && view === "products") void loadCategories();
+  }, [isAdmin, loadCategories, loadProducts, view]);
 
   useEffect(() => {
     if (!["dashboard", "leads"].includes(view)) return;
@@ -206,6 +253,8 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
     if (!isAdmin || view !== "employees") return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadEmployees();
+    const timer = window.setInterval(loadEmployees, 20_000);
+    return () => window.clearInterval(timer);
   }, [isAdmin, loadEmployees, view]);
 
   useEffect(() => {
@@ -213,6 +262,19 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadRatings();
   }, [isAdmin, loadRatings, view]);
+
+  useEffect(() => {
+    if (!isAdmin || view !== "commands") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadCommands();
+  }, [isAdmin, loadCommands, view]);
+
+  useEffect(() => {
+    if (view !== "dialogs") return;
+    void loadConversations(selectedConversation?.id);
+    const timer = window.setInterval(() => void loadConversations(selectedConversation?.id), 5_000);
+    return () => window.clearInterval(timer);
+  }, [loadConversations, selectedConversation?.id, view]);
 
   useEffect(() => {
     async function heartbeat() {
@@ -237,6 +299,7 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
   }
 
   function selectView(nextView: View) {
+    if (nextView !== "dialogs") conversationRequestRef.current += 1;
     setView(nextView);
     setDrawerOpen(false);
   }
@@ -257,6 +320,66 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
     } catch {
       setError("Не удалось сохранить сотрудника.");
     }
+  }
+
+  async function conversationAction(action: "take" | "reply" | "close" | "clear" | "archive" | "delete") {
+    if (!selectedConversation) return;
+    if (action === "clear" && !window.confirm("Удалить историю?\nЭто действие нельзя отменить.")) return;
+    if (action === "delete" && !window.confirm("Удалить диалог полностью?\nЭто действие нельзя отменить.")) return;
+    setError("");
+    try {
+      const response = await fetch("/api/admin/conversations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action, sessionId: selectedConversation.id, message: reply }),
+      });
+      const payload = await readJsonResponse<{ conversations?: AdminConversation[]; session?: AdminConversation | null; messages?: AdminChatMessage[]; error?: string }>(response);
+      if (!response.ok || !payload.conversations || !payload.messages) throw new Error(payload.error || `HTTP ${response.status}`);
+      conversationRequestRef.current += 1;
+      setConversations(payload.conversations);
+      setSelectedConversation(payload.session ?? null);
+      setConversationMessages(payload.messages);
+      if (action === "reply") setReply("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Не удалось обновить диалог.");
+    }
+  }
+
+  async function saveCommand(event: FormEvent) {
+    event.preventDefault();
+    const response = await fetch("/api/admin/chat-commands", { method: commandForm.id ? "PATCH" : "POST", headers: { "content-type": "application/json" }, credentials: "include", body: JSON.stringify(commandForm) });
+    const payload = await response.json() as { commands?: ChatCommand[]; error?: string };
+    if (!response.ok || !payload.commands) { setError(payload.error || "Не удалось сохранить команду."); return; }
+    setCommands(payload.commands); setCommandForm({ id: "", name: "", command: "", response: "", enabled: true });
+  }
+
+  async function saveCommandDirect(command: ChatCommand) {
+    const response = await fetch("/api/admin/chat-commands", { method: "PATCH", headers: { "content-type": "application/json" }, credentials: "include", body: JSON.stringify(command) });
+    const payload = await response.json() as { commands?: ChatCommand[]; error?: string };
+    if (!response.ok || !payload.commands) { setError(payload.error || "Не удалось изменить команду."); return; }
+    setCommands(payload.commands);
+  }
+
+  async function removeCommand(id: string) {
+    if (!window.confirm("Удалить команду?")) return;
+    const response = await fetch(`/api/admin/chat-commands?id=${encodeURIComponent(id)}`, { method: "DELETE", credentials: "include" });
+    if (response.ok) setCommands(((await response.json()) as { commands: ChatCommand[] }).commands);
+  }
+
+  async function saveCategory(event: FormEvent) {
+    event.preventDefault();
+    const response = await fetch("/api/admin/categories", { method: categoryForm.originalSlug ? "PATCH" : "POST", headers: { "content-type": "application/json" }, credentials: "include", body: JSON.stringify(categoryForm) });
+    const payload = await response.json() as { categories?: CategoryRecord[]; error?: string };
+    if (!response.ok || !payload.categories) { setError(payload.error || "Не удалось сохранить категорию."); return; }
+    setCategories(payload.categories); setCategoryForm({ originalSlug: "", slug: "", name: "", description: "" });
+  }
+
+  async function removeCategory(slug: string) {
+    const response = await fetch(`/api/admin/categories?slug=${encodeURIComponent(slug)}`, { method: "DELETE", credentials: "include" });
+    const payload = await response.json() as { categories?: CategoryRecord[]; error?: string };
+    if (!response.ok || !payload.categories) { setError(payload.error || "Не удалось удалить категорию."); return; }
+    setCategories(payload.categories);
   }
 
   async function saveProduct(event: FormEvent<HTMLFormElement>) {
@@ -431,6 +554,8 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
         </div>
         <div className="admin-view-tabs admin-mobile-nav" role="tablist" aria-label="Разделы админки">
           <button className={view === "dashboard" ? "active" : ""} onClick={() => selectView("dashboard")} type="button">Dashboard</button>
+          <button className={view === "dialogs" ? "active" : ""} onClick={() => selectView("dialogs")} type="button"><span>Диалоги</span>{waitingDialogCount > 0 && <b>{waitingDialogCount}</b>}</button>
+          {isAdmin && <button className={view === "commands" ? "active" : ""} onClick={() => selectView("commands")} type="button">Команды чата</button>}
           <button className={view === "products" ? "active" : ""} onClick={() => selectView("products")} type="button">Товары</button>
           <button className={view === "leads" ? "active" : ""} onClick={() => selectView("leads")} type="button">
             <span>Заявки</span>
@@ -461,9 +586,47 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
             <article><span>Скрыты</span><strong>{hiddenCount}</strong></article>
             <article><span>Архив</span><strong>{archivedCount}</strong></article>
           </div>
-          <div className="empty-state">
-            <strong>Сообщения клиентов обрабатываются через Chat2Desk.</strong>
-            <p>Внутренняя админка отвечает за товары, сотрудников, настройки и контроль публикаций.</p>
+          <div className="empty-state"><strong>Все обращения собраны в одной панели.</strong><p>Откройте «Диалоги», чтобы взять обращение, ответить или закрыть его.</p></div>
+        </section>
+      )}
+
+      {view === "dialogs" && (
+        <section className="admin-wide-panel dialogs-panel" aria-label="Диалоги">
+          <header><div><p className="eyebrow">Поддержка</p><h2>Диалоги</h2></div><span className="operator-presence">● Вы в сети</span></header>
+          <div className="dialog-status-filter">
+            {(["ALL", "WAITING_MANAGER", "IN_PROGRESS", "NEW", "CLOSED"] as const).map((status) => <button className={conversationStatus === status ? "active" : ""} type="button" key={status} onClick={() => setConversationStatus(status)}>{chatStatusLabel(status)}</button>)}
+            <button className={showArchivedDialogs ? "active" : ""} type="button" onClick={() => setShowArchivedDialogs((value) => !value)}>Архив</button>
+          </div>
+          <div className="dialog-admin-layout">
+            <aside className="dialog-list">
+              {conversations.length === 0 && <p>Диалогов в этом статусе нет.</p>}
+              {conversations.map((item) => <button className={selectedConversation?.id === item.id ? "active" : ""} type="button" key={item.id} onClick={() => void loadConversations(item.id)}><span><b>{chatStatusLabel(item.status)}</b><time>{formatDate(item.updatedAt)}</time></span><small>{item.operatorName ? `Отвечает: ${item.operatorName}` : item.page || "/"}</small></button>)}
+            </aside>
+            <div className="dialog-thread">
+              {!selectedConversation ? <div className="empty-state"><strong>Выберите диалог</strong></div> : <>
+                <div className="dialog-thread-head"><div><strong>{chatStatusLabel(selectedConversation.status)}</strong><span>{selectedConversation.operatorName ? `Сотрудник: ${selectedConversation.operatorName}` : "Не назначен"}</span></div><div>{selectedConversation.status !== "CLOSED" && selectedConversation.status !== "IN_PROGRESS" && <button type="button" onClick={() => void conversationAction("take")}>Взять диалог</button>}{selectedConversation.canClose && <button type="button" onClick={() => void conversationAction("close")}>Закрыть диалог</button>}<button type="button" onClick={() => void conversationAction("clear")}>Очистить историю</button><button type="button" onClick={() => void conversationAction("archive")}>Архивировать</button>{isAdmin && <button type="button" onClick={() => void conversationAction("delete")}>Удалить</button>}</div></div>
+                <div className="dialog-messages">{conversationMessages.map((item) => <article className={item.role} key={item.id}><small>{item.authorName || chatRoleLabel(item.role)}</small><p>{item.content}</p><time>{formatDate(item.createdAt)}</time></article>)}</div>
+                {selectedConversation.canReply && <form className="dialog-reply" onSubmit={(event) => { event.preventDefault(); if (reply.trim()) void conversationAction("reply"); }}><textarea value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Ответ клиенту" /><button className="btn primary" disabled={!reply.trim()} type="submit">Отправить</button></form>}
+              </>}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {view === "commands" && isAdmin && (
+        <section className="admin-wide-panel" aria-label="Команды чата">
+          <header><div><p className="eyebrow">Автоответы</p><h2>Команды чата</h2></div></header>
+          <div className="product-admin-layout">
+            <div className="product-admin-list command-list">
+              {commands.map((item) => <article className="product-admin-card" key={item.id}><div><h3>{item.command}</h3><p>{item.name}</p><span>{item.response}</span><small>{item.enabled ? "Включена" : "Выключена"}</small></div><div className="product-admin-actions"><button type="button" onClick={() => setCommandForm(item)}>Изменить</button><button type="button" onClick={() => void saveCommandDirect({ ...item, enabled: !item.enabled })}>{item.enabled ? "Выключить" : "Включить"}</button><button type="button" onClick={() => void removeCommand(item.id)}>Удалить</button></div></article>)}
+            </div>
+            <form className="product-editor" onSubmit={saveCommand}>
+              <label>Название команды<input value={commandForm.name} onChange={(event) => setCommandForm((current) => ({ ...current, name: event.target.value }))} placeholder="Приветствие" /></label>
+              <label>Команда<input value={commandForm.command} onChange={(event) => setCommandForm((current) => ({ ...current, command: event.target.value }))} placeholder="/прив" /></label>
+              <label className="span-2">Ответ<textarea value={commandForm.response} onChange={(event) => setCommandForm((current) => ({ ...current, response: event.target.value }))} /></label>
+              <label className="checkbox-row"><input type="checkbox" checked={commandForm.enabled} onChange={(event) => setCommandForm((current) => ({ ...current, enabled: event.target.checked }))} /> Включена</label>
+              <div className="product-editor-actions"><button className="btn primary" type="submit">Сохранить</button><button className="btn secondary" type="button" onClick={() => setCommandForm({ id: "", name: "", command: "", response: "", enabled: true })}>Очистить</button></div>
+            </form>
           </div>
         </section>
       )}
@@ -501,6 +664,7 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
                   <p>{lead.product || "Без товара"} · {lead.material || "Материал не указан"}{lead.area ? ` · ${lead.area}` : ""}</p>
                   {lead.message && <p>{lead.message}</p>}
                   <small>{lead.source || "Direct"} · {lead.page || "/"} · {formatDate(lead.createdAt)}</small>
+                  <a className="lead-details-link" href={`/admin/leads/${lead.id}`}>Подробнее →</a>
                 </div>
                 <div className="lead-admin-actions">
                   {leadStatuses.map((item) => (
@@ -543,6 +707,13 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
               </button>
             </div>
           </header>
+          {isAdmin && <details className="category-manager">
+            <summary>Управление категориями</summary>
+            <div className="category-manager-layout">
+              <div>{categories.map((category) => <article key={category.slug}><div><strong>{category.name}</strong><span>{category.slug}</span><p>{category.description}</p></div><div><button type="button" onClick={() => setCategoryForm({ originalSlug: category.slug, slug: category.slug, name: category.name, description: category.description })}>Изменить</button><button type="button" onClick={() => void removeCategory(category.slug)}>Удалить</button></div></article>)}</div>
+              <form onSubmit={saveCategory}><input required disabled={Boolean(categoryForm.originalSlug)} placeholder="Slug" value={categoryForm.slug} onChange={(event) => setCategoryForm((value) => ({ ...value, slug: event.target.value }))} /><input required placeholder="Название" value={categoryForm.name} onChange={(event) => setCategoryForm((value) => ({ ...value, name: event.target.value }))} /><textarea placeholder="Описание" value={categoryForm.description} onChange={(event) => setCategoryForm((value) => ({ ...value, description: event.target.value }))} /><button className="btn primary" type="submit">Сохранить категорию</button></form>
+            </div>
+          </details>}
           {vkSyncRows && (
             <section className="vk-sync-preview" aria-label="Предпросмотр синхронизации VK">
               <div className="vk-sync-toolbar">
@@ -601,7 +772,7 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
                 <input value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Поиск по товарам" />
                 <select value={productCategory} onChange={(event) => setProductCategory(event.target.value as ProductCategory | "all")}>
                   <option value="all">Все категории</option>
-                  {Object.entries(productCategories).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  {(categories.length ? categories.map((item) => [item.slug, item.name] as const) : Object.entries(productCategories)).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
                 <select value={productStatus} onChange={(event) => setProductStatus(event.target.value as ProductStatus | "all")}>
                   {productStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
@@ -613,7 +784,7 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
                     <div className="product-admin-thumb" aria-hidden="true" />
                     <div>
                       <h3>{product.name}</h3>
-                      <p>{productCategories[product.category]} · {product.material}</p>
+                      <p>{categories.find((item) => item.slug === product.category)?.name || productCategories[product.category] || product.category} · {product.material}</p>
                       <span>{formatPrice(product)} · {product.status ?? "published"}</span>
                       <small>Изменён: {product.updatedBy ?? "seed"} · {formatDate(product.updatedAt)}</small>
                     </div>
@@ -631,7 +802,7 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
             <form className="product-editor" onSubmit={saveProduct}>
               <label>Название<input value={productForm.name} onChange={(event) => updateProductForm({ name: event.target.value })} /></label>
               <label>Slug<input value={productForm.slug} onChange={(event) => updateProductForm({ slug: event.target.value })} /></label>
-              <label>Категория<select value={productForm.category} onChange={(event) => updateProductForm({ category: event.target.value as ProductCategory })}>{Object.entries(productCategories).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label>Категория<select value={productForm.category} onChange={(event) => updateProductForm({ category: event.target.value as ProductCategory })}>{(categories.length ? categories.map((item) => [item.slug, item.name] as const) : Object.entries(productCategories)).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               <label>Материал<input value={productForm.material} onChange={(event) => updateProductForm({ material: event.target.value })} /></label>
               <label>Короткое имя<input value={productForm.shortName} onChange={(event) => updateProductForm({ shortName: event.target.value })} /></label>
               <label>Статус<select value={productForm.status} onChange={(event) => updateProductForm({ status: event.target.value as ProductStatus })}>{productStatuses.filter((item) => item.value !== "all").map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
@@ -640,9 +811,8 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
               <label>Префикс цены<input value={productForm.pricePrefix} onChange={(event) => updateProductForm({ pricePrefix: event.target.value })} /></label>
               <label>Цена<input value={productForm.priceFrom} onChange={(event) => updateProductForm({ priceFrom: event.target.value })} /></label>
               <label>Единица<input value={productForm.priceUnit} onChange={(event) => updateProductForm({ priceUnit: event.target.value })} /></label>
-              <label>Image<input value={productForm.image} onChange={(event) => updateProductForm({ image: event.target.value })} /></label>
               <label>Texture<input value={productForm.texture} onChange={(event) => updateProductForm({ texture: event.target.value })} /></label>
-              <label className="span-2">Gallery<textarea value={productForm.gallery} onChange={(event) => updateProductForm({ gallery: event.target.value })} /></label>
+              <div className="span-2"><span className="editor-field-title">Изображения товара</span><ProductImageUploader images={[productForm.image, ...splitLines(productForm.gallery)].filter((url) => url.startsWith("/") || url.startsWith("http"))} onChange={(images) => updateProductForm({ image: images[0] || "texture-custom", gallery: images.slice(1).join("\n") })} /></div>
               <label className="span-2">Features<textarea value={productForm.features} onChange={(event) => updateProductForm({ features: event.target.value })} /></label>
               <label className="span-2">Application<textarea value={productForm.application} onChange={(event) => updateProductForm({ application: event.target.value })} /></label>
               <label className="checkbox-row"><input type="checkbox" checked={productForm.priceOnRequest} onChange={(event) => updateProductForm({ priceOnRequest: event.target.checked })} /> Цена по запросу</label>
@@ -674,9 +844,9 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
               <article className="employee-card" key={employee.id}>
                 <div><strong>{employee.name}</strong><span>{employee.email}</span><small>Создан: {employee.createdAt || "env admin"}</small></div>
                 <div className="employee-stats">
-                  <span>{employee.role}</span><span>{employee.isActive ? "Активен" : "Отключен"}</span><span>Средняя оценка: {employee.averageRating?.toFixed(1) ?? "нет"}</span><span>Диалогов: {employee.dialogCount}</span><span>Оценок: {employee.ratingCount}</span>
+                  <span>{employee.role}</span><span>{employee.isActive ? "Активен" : "Отключен"}</span><span>{employee.availability === "ONLINE" ? "🟢 В сети" : employee.availability === "BUSY" ? "🟡 Занят" : "⚪ Не в сети"}</span><span>Средняя оценка: {employee.averageRating?.toFixed(1) ?? "нет"}</span><span>Диалогов: {employee.dialogCount}</span><span>Оценок: {employee.ratingCount}</span>
                 </div>
-                {employee.id !== "env-admin" && (
+                {employee.id !== "env-admin" && employee.id !== manager.id && (
                   <div className="employee-actions">
                     <button type="button" onClick={() => void saveEmployee({ id: employee.id, isActive: !employee.isActive })}>{employee.isActive ? "Отключить" : "Восстановить"}</button>
                     <button type="button" onClick={() => { const password = window.prompt("Новый пароль минимум 12 символов"); if (password) void saveEmployee({ id: employee.id, password }); }}>Сбросить пароль</button>
@@ -710,7 +880,7 @@ export function SupportAdmin({ manager }: { manager: AdminManager }) {
         <section className="admin-wide-panel" aria-label="Настройки">
           <header><div><p className="eyebrow">Интеграции</p><h2>Настройки</h2></div></header>
           <div className="admin-settings-grid">
-            <article><strong>Chat2Desk</strong><span>Включён через `NEXT_PUBLIC_CHAT2DESK_WIDGET_TOKEN`.</span></article>
+            <article><strong>Чат ФасадоФ</strong><span>Собственный чат работает через базу данных и раздел «Диалоги».</span></article>
             <article>
               <strong>MAX</strong>
               <span>Серверные уведомления используют `MAX_BOT_TOKEN` и `MAX_MANAGER_CHAT_ID`.</span>
@@ -824,6 +994,19 @@ function splitLines(value: string) {
   return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
 }
 
+async function readJsonResponse<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get("content-type") ?? "";
+  const text = await response.text();
+  if (!contentType.toLowerCase().includes("application/json")) {
+    throw new Error(text.trim().replace(/\s+/g, " ").slice(0, 180) || `HTTP ${response.status}`);
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error("Сервер вернул некорректный JSON");
+  }
+}
+
 function formatDate(value?: string) {
   if (!value) return "нет даты";
   return new Date(value).toLocaleString("ru-RU");
@@ -847,4 +1030,12 @@ function syncStatusLabel(status: VkSyncStatus) {
     site_only: "• Только на сайте",
     error: "! Ошибка",
   } as Record<VkSyncStatus, string>)[status];
+}
+
+function chatStatusLabel(status: ChatStatus | "ALL") {
+  return ({ ALL: "Все", NEW: "Новый", WAITING_MANAGER: "Ожидает менеджера", IN_PROGRESS: "В работе", CLOSED: "Закрыт" } as const)[status];
+}
+
+function chatRoleLabel(role: AdminChatMessage["role"]) {
+  return ({ user: "Клиент", assistant: "Помощник", operator: "Сотрудник", system: "Система" } as const)[role];
 }

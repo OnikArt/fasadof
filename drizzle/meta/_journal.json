@@ -50,6 +50,20 @@
       "when": 1788868800000,
       "tag": "0006_lead_lifecycle_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789862400000,
+      "tag": "0007_product_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789948800000,
+      "tag": "0008_chat_workflow_commands",
+      "breakpoints": true
     }
   ]
 }

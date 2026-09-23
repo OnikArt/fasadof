@@ -33,7 +33,7 @@ export const leadAuditEvents = sqliteTable("lead_audit_events", {
 
 export const chatSessions = sqliteTable("chat_sessions", {
   id: text("id").primaryKey(),
-  status: text("status").notNull().default("AUTO"),
+  status: text("status").notNull().default("NEW"),
   page: text("page").notNull().default(""),
   source: text("source").notNull().default("Direct"),
   customerToken: text("customer_token").notNull().default(""),
@@ -41,6 +41,7 @@ export const chatSessions = sqliteTable("chat_sessions", {
   operatorName: text("operator_name"),
   closedAt: text("closed_at"),
   closedBy: text("closed_by"),
+  archivedAt: text("archived_at"),
   attribution: text("attribution", { mode: "json" }).notNull(),
   contact: text("contact", { mode: "json" }),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -83,4 +84,22 @@ export const chatRatings = sqliteTable("chat_ratings", {
   comment: text("comment").notNull().default(""),
   employeeId: text("employee_id"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const chatCommands = sqliteTable("chat_commands", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  command: text("command").notNull().unique(),
+  response: text("response").notNull(),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const productCategories = sqliteTable("product_categories", {
+  slug: text("slug").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

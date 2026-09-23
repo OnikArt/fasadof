@@ -25,18 +25,18 @@ Run the integration check on the deployed VPS, where the service user can access
 
 1. Install dependencies.
 2. Copy `.env.example` and prepare production secrets.
-3. Apply database migration / configure Sites D1 binding `DB`.
+3. Set `FASADOF_DATA_DIR` and apply the SQLite migrations.
 4. Add backend/Sites secret variables.
 5. Add frontend public variables.
 6. Deploy backend/server routes or Sites bundle.
 7. Deploy frontend/domain.
 8. Configure production domain and HTTPS.
 9. Run backend health check: `/api/chat`, `/api/leads`, `/api/admin/session`.
-10. Test Chat2Desk and the local `/api/chat` fallback.
+10. Test the first-party `/api/chat` flow.
 11. Login as manager.
 12. Test manager presence in the customer chat.
 13. Test lead persistence in the database.
-14. Test Chat2Desk widget on the production domain.
+14. Test the customer widget, manager takeover, close and rating on the production domain.
 
 ## Secrets
 

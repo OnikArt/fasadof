@@ -1,4 +1,4 @@
-export type ProductCategory = "facades" | "countertops";
+export type ProductCategory = string;
 
 export type Product = {
   id: string;
@@ -229,7 +229,7 @@ export const products: Product[] = [
   },
 ];
 
-export const productCategories: Record<ProductCategory, string> = {
+export const productCategories: Record<string, string> = {
   facades: "Мебельные фасады",
   countertops: "Столешницы",
 };

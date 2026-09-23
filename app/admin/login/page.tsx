@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AdminLoginForm } from "@/components/AdminLoginForm";
-import { getManagerFromCookieHeader, isManagerAuthConfigured, readManagerAuthEnv } from "@/server/manager-auth";
+import { getManagerFromCookieHeader, isManagerSessionConfigured, readManagerAuthEnv } from "@/server/manager-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -31,9 +31,9 @@ export default async function AdminLoginPage() {
           Доступ защищён server-side session cookie. Первый менеджер создаётся через `npm run admin:create`,
           затем значения добавляются в production env.
         </p>
-        {!isManagerAuthConfigured(env) && (
+        {!isManagerSessionConfigured(env) && (
           <div className="admin-warning" role="alert">
-            Manager auth не настроен. Добавьте ADMIN_EMAIL, ADMIN_PASSWORD_HASH и ADMIN_SESSION_SECRET.
+            Сессии не настроены. Добавьте ADMIN_SESSION_SECRET длиной не менее 32 символов.
           </div>
         )}
       </div>

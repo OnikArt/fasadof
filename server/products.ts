@@ -1,5 +1,6 @@
 import { products as seedProducts, type Product, type ProductCategory } from "@/data/products";
 import { getDatabase } from "@/server/database";
+import { listCategories } from "@/server/categories";
 
 export type ProductStatus = "published" | "hidden" | "archived";
 
@@ -95,6 +96,8 @@ export async function getProductBySlug(slug: string, options: { includeHidden?: 
 }
 
 export async function saveProduct(input: ProductInput, manager: { email: string; name: string }) {
+  const categoryExists = (await listCategories()).some((category) => category.slug === input.category);
+  if (!categoryExists) throw new Error("category does not exist");
   const now = new Date().toISOString();
   const existing = input.id ? await getProductById(input.id) : null;
   const product = normalizeProductInput(input, existing, manager, now);

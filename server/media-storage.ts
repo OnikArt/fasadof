@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
@@ -42,14 +42,43 @@ export async function readVkMedia(filename: string) {
 }
 
 export async function persistUploadedProductImage(filename: string, bytes: Uint8Array) {
+  const bucket = await getProductMediaBucket();
+  if (bucket) {
+    await bucket.put(productMediaKey(filename), bytes, { httpMetadata: { contentType: contentTypeFor(extname(filename)) } });
+    return `/api/media/products/${filename}`;
+  }
   const directory = getProductMediaDirectory();
   await mkdir(directory, { recursive: true });
-  await writeFile(join(directory, filename), bytes, { flag: "wx" });
+  await writeFile(join(directory, filename), bytes, { flag: "wx" }).catch((error: NodeJS.ErrnoException) => {
+    if (error.code !== "EEXIST") throw error;
+  });
   return `/api/media/products/${filename}`;
 }
 
 export async function readProductMedia(filename: string) {
+  const bucket = await getProductMediaBucket();
+  if (bucket) {
+    const object = await bucket.get(productMediaKey(filename));
+    if (!object) return null;
+    return { bytes: new Uint8Array(await object.arrayBuffer()), contentType: contentTypeFor(extname(filename)) };
+  }
   return readMediaFile(getProductMediaDirectory(), filename);
+}
+
+export async function deleteUploadedProductImage(url: string) {
+  const prefix = "/api/media/products/";
+  if (!url.startsWith(prefix)) return false;
+  const filename = decodeURIComponent(url.slice(prefix.length));
+  if (!/^[a-z0-9][a-z0-9._-]+$/i.test(filename)) return false;
+  const bucket = await getProductMediaBucket();
+  if (bucket) {
+    await bucket.delete(productMediaKey(filename));
+    return true;
+  }
+  const directory = getProductMediaDirectory();
+  const path = resolve(directory, filename);
+  if (!path.startsWith(`${resolve(directory)}/`) && !path.startsWith(`${resolve(directory)}\\`)) return false;
+  try { await unlink(path); return true; } catch { return false; }
 }
 
 async function readMediaFile(directory: string, filename: string) {
@@ -71,6 +100,26 @@ function getVkMediaDirectory() {
 function getProductMediaDirectory() {
   const dataDir = resolve(process.env.FASADOF_DATA_DIR || join(process.cwd(), ".data"));
   return join(dataDir, "media", "products");
+}
+
+type ProductMediaBucket = {
+  put(key: string, value: Uint8Array, options?: { httpMetadata?: { contentType?: string } }): Promise<unknown>;
+  get(key: string): Promise<{ arrayBuffer(): Promise<ArrayBuffer> } | null>;
+  delete(key: string): Promise<void>;
+};
+
+async function getProductMediaBucket(): Promise<ProductMediaBucket | undefined> {
+  try {
+    const cloudflareWorkers = "cloudflare:workers";
+    const mod = await import(/* @vite-ignore */ cloudflareWorkers) as { env?: { MEDIA?: ProductMediaBucket } };
+    return mod.env?.MEDIA;
+  } catch {
+    return undefined;
+  }
+}
+
+function productMediaKey(filename: string) {
+  return `products/${filename}`;
 }
 
 async function findExisting(filenameBase: string) {

@@ -40,25 +40,11 @@ export function ProductGallery({ product }: { product: Product }) {
           <>
             <button className="gallery-arrow prev" onClick={() => go(-1)} type="button" aria-label="Предыдущее фото">‹</button>
             <button className="gallery-arrow next" onClick={() => go(1)} type="button" aria-label="Следующее фото">›</button>
-            <span className="gallery-counter">{active + 1} / {images.length}</span>
+            <div className="gallery-dots">{images.map((image, index) => <button className={active === index ? "active" : ""} key={image.id} onClick={() => setActive(index)} type="button" aria-label={`Показать фото ${index + 1}`} />)}</div>
           </>
         )}
+        <span className="gallery-counter">{active + 1}/{images.length}</span>
       </div>
-      {hasMultiple && (
-        <div className="product-gallery-thumbs" aria-label="Фотографии товара">
-          {images.map((image, index) => (
-            <button
-              className={active === index ? "active" : ""}
-              key={image.id}
-              onClick={() => setActive(index)}
-              type="button"
-              aria-label={`Показать фото ${index + 1}`}
-            >
-              <ProductObject product={{ ...product, image: image.url }} size="compact" />
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

@@ -9,7 +9,7 @@ Read:
 
 States:
 
-- `AUTO`: the local knowledge-base responder may answer;
-- `WAITING_OPERATOR`: the user requested a manager, automatic replies stop;
-- `OPERATOR`: manager owns the dialog;
+- `NEW`: the local knowledge-base responder may answer;
+- `WAITING_MANAGER`: the user requested a manager, automatic replies stop;
+- `IN_PROGRESS`: manager owns the dialog;
 - `CLOSED`: conversation is archived.

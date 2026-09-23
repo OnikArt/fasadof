@@ -2,22 +2,22 @@ import type { LeadPayload } from "@/server/leads";
 import { createMaxBotClient } from "@/server/max-bot";
 import { integrationLog } from "@/server/integration-errors";
 
-export async function notifyLeadInMax(lead: LeadPayload, leadId?: number) {
+export async function notifyLeadInMax(lead: LeadPayload, _leadId?: number) {
+  void _leadId;
   const interest = [lead.product, lead.material, lead.area].filter(Boolean).join(" · ");
   const lines = [
-    "🔔 Новая заявка с сайта",
+    "🟢 Новая заявка с сайта",
     "",
-    leadId ? `Заявка #${leadId}` : "",
-    `👤 Имя: ${lead.name || "Не указано"}`,
-    `📞 Телефон: ${lead.phone || "Не указан"}`,
-    lead.email ? `✉️ Email: ${lead.email}` : "",
-    interest ? `📦 Интерес: ${interest}` : "",
-    lead.message ? `💬 Комментарий: ${lead.message}` : "",
+    `👤 Клиент:\n${lead.name || "Не указано"}`,
+    `📞 Телефон:\n${lead.phone || "Не указан"}`,
+    lead.email ? `✉️ Email:\n${lead.email}` : "",
+    interest ? `📦 Интерес:\n${interest}` : "",
+    lead.message ? `💬 Сообщение:\n${lead.message}` : "",
     "",
     "Источник: fasadof36.ru",
     `Страница: ${lead.page || "/"}`,
     `UTM: ${formatUtm(lead)}`,
-    `Время: ${formatMoscowTime(lead.createdAt)}`,
+    `🕒 Время:\n${formatMoscowTime(lead.createdAt)}`,
   ].filter(Boolean);
   return sendNonCritical(lines.join("\n"), "lead", {
     linkButton: { text: "Открыть админку", url: "https://fasadof36.ru/admin/support" },
@@ -45,7 +45,6 @@ export async function notifyChatMessageInMax(input: { sessionId: string; message
     "",
     input.message,
     "",
-    `Диалог: ${input.sessionId}`,
     `Страница: ${input.page || "/"}`,
     `Время: ${formatMoscowTime(new Date().toISOString())}`,
   ].join("\n"), "chat");
@@ -55,10 +54,20 @@ export async function notifyOperatorRequestInMax(input: { sessionId: string; pag
   return sendNonCritical([
     "🔔 Посетитель запросил менеджера",
     "",
-    `Диалог: ${input.sessionId}`,
     `Страница: ${input.page || "/"}`,
     `Время: ${formatMoscowTime(new Date().toISOString())}`,
   ].join("\n"), "operator-request");
+}
+
+export async function notifyAdminActionInMax(input: { title: string; subject?: string; employee: string; details?: string }) {
+  return sendNonCritical([
+    `⚙️ ${input.title}`,
+    "",
+    input.subject ? `📌 ${input.subject}` : "",
+    input.details || "",
+    `👤 Сотрудник: ${input.employee}`,
+    `🕒 Время: ${formatMoscowTime(new Date().toISOString())}`,
+  ].filter(Boolean).join("\n"), "admin-action");
 }
 
 export async function notifyVkSyncInMax(summary: { created: number; enriched: number; unchanged: number; review: number; errors: number; images: number }) {

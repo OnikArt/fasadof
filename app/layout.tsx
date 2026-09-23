@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Chat2DeskWidget } from "@/components/Chat2DeskWidget";
+import { SupportChat } from "@/components/SupportChat";
 import { BUSINESS } from "@/config/business";
 import "./globals.css";
 
@@ -76,7 +76,7 @@ export default function RootLayout({
       </head>
       <body>
         {children}
-        <Chat2DeskWidget />
+        <SupportChat />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}

@@ -11,7 +11,6 @@ export const metadata: Metadata = {
     canonical: "/",
   },
 };
-
 export default async function Home() {
   const products = await listPublicProducts();
   const faqSchema = {
@@ -27,7 +26,10 @@ export default async function Home() {
   return (
     <>
       <HomeExperience products={products} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
     </>
   );
 }

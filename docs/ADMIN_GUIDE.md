@@ -16,12 +16,12 @@ Open `/admin/support`.
 
 Available statuses:
 
-- `AUTO`: the local knowledge-base responder is active;
-- `WAITING_OPERATOR`: customer requested a manager;
-- `OPERATOR`: manager took the dialog;
+- `NEW`: the local knowledge-base responder is active;
+- `WAITING_MANAGER`: customer requested a manager;
+- `IN_PROGRESS`: manager took the dialog;
 - `CLOSED`: dialog is archived.
 
-Use `Взять диалог` before replying when the customer is waiting. A reply automatically keeps the dialog in `OPERATOR`.
+Use `Взять диалог` before replying when the customer is waiting. The reply field is available only to the assigned manager while the dialog is `IN_PROGRESS`.
 
 ## Manager online status
 
@@ -37,7 +37,7 @@ Click `Выйти`. The server clears the HttpOnly session cookie.
 
 ## Leads
 
-Lead requests currently go through the public form and are persisted through `/api/leads`. The admin UI in this version focuses on support chat; a full lead CRM dashboard is not implemented yet.
+Lead requests are persisted through `/api/leads`. The admin CRM lists leads, filters statuses, updates lifecycle state and permits audited soft deletion only for completed or rejected leads.
 
 ## Catalogue and content
 

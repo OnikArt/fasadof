@@ -1,7 +1,7 @@
 import {
   authenticateManager,
   createManagerSession,
-  isManagerAuthConfigured,
+  isManagerSessionConfigured,
   readManagerAuthEnv,
   serializeSessionCookie,
 } from "@/server/manager-auth";
@@ -12,8 +12,8 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   const env = readManagerAuthEnv();
-  if (!isManagerAuthConfigured(env)) {
-    return Response.json({ error: "Manager auth is not configured" }, { status: 503 });
+  if (!isManagerSessionConfigured(env)) {
+    return Response.json({ error: "ADMIN_SESSION_SECRET is not configured or is too short" }, { status: 503 });
   }
 
   const payload = (await request.json().catch(() => null)) as { email?: string; password?: string } | null;
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     { ok: true, manager },
     {
       headers: {
-        "Set-Cookie": serializeSessionCookie(token, request.url),
+        "Set-Cookie": serializeSessionCookie(token, request.url, request.headers.get("x-forwarded-proto")),
       },
     },
   );

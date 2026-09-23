@@ -1,5 +1,7 @@
-import { deleteProduct, listProducts, saveProduct, setProductStatus, type ProductInput, type ProductStatus } from "@/server/products";
+import { deleteProduct, getProductById, listProducts, saveProduct, setProductStatus, type ProductInput, type ProductStatus } from "@/server/products";
 import { getManagerFromCookieHeader } from "@/server/manager-auth";
+import { notifyAdminActionInMax } from "@/server/notifications";
+import { deleteUploadedProductImage } from "@/server/media-storage";
 
 async function requireManager(request: Request) {
   return getManagerFromCookieHeader(request.headers.get("cookie"));
@@ -45,10 +47,15 @@ export async function DELETE(request: Request) {
     return Response.json({ product: archived, products: await listProducts({ includeHidden: true, status: "all" }) });
   }
 
+  const current = await getProductById(id);
   const deleted = await deleteProduct(id);
   if (!deleted) return Response.json({ error: "product not found" }, { status: 404 });
 
-  return Response.json({ ok: true, products: await listProducts({ includeHidden: true, status: "all" }) });
+  const products = await listProducts({ includeHidden: true, status: "all" });
+  await deleteUnusedProductImages(productImages(current), products);
+
+  await notifyAdminActionInMax({ title: "Товар удалён", employee: manager.name });
+  return Response.json({ ok: true, products });
 }
 
 async function upsertProduct(request: Request) {
@@ -59,10 +66,24 @@ async function upsertProduct(request: Request) {
   if (!payload) return Response.json({ error: "Invalid JSON payload" }, { status: 400 });
 
   try {
+    const previous = payload.id ? await getProductById(payload.id) : null;
     const product = await saveProduct(payload, { email: manager.email, name: manager.name });
-    return Response.json({ product, products: await listProducts({ includeHidden: true, status: "all" }) }, { status: payload.id ? 200 : 201 });
+    const retained = new Set(productImages(product));
+    const products = await listProducts({ includeHidden: true, status: "all" });
+    await deleteUnusedProductImages(productImages(previous).filter((url) => !retained.has(url)), products);
+    await notifyAdminActionInMax({ title: payload.id ? "Товар изменён" : "Товар создан", subject: product.name, employee: manager.name });
+    return Response.json({ product, products }, { status: payload.id ? 200 : 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "product validation failed";
     return Response.json({ error: message }, { status: 400 });
   }
+}
+
+function productImages(product: { image?: string; gallery?: string[] } | null) {
+  return product ? [product.image, ...(product.gallery ?? [])].filter((value): value is string => Boolean(value?.startsWith("/api/media/products/"))) : [];
+}
+
+async function deleteUnusedProductImages(urls: string[], products: Array<{ image?: string; gallery?: string[] }>) {
+  const referenced = new Set(products.flatMap((product) => productImages(product)));
+  await Promise.all(urls.filter((url) => !referenced.has(url)).map(deleteUploadedProductImage));
 }

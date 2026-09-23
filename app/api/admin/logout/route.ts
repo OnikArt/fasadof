@@ -5,7 +5,7 @@ export async function POST(request: Request) {
     { ok: true },
     {
       headers: {
-        "Set-Cookie": serializeClearedSessionCookie(request.url),
+        "Set-Cookie": serializeClearedSessionCookie(request.url, request.headers.get("x-forwarded-proto")),
       },
     },
   );

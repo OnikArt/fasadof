@@ -113,7 +113,8 @@ test("server-renders the ФасадоФ home page", async () => {
   assert.match(html, /Рассчитать проект/);
   assert.match(html, /Фасады под ваш интерьер/);
   assert.match(html, /Основные фасадные решения/);
-  assert.match(html, /Chat2Desk/);
+  assert.match(html, /SupportChat|support-chat-launcher/);
+  assert.doesNotMatch(html, /Chat2Desk/);
   assert.match(html, /8 903 850-24-04/);
   assert.match(html, /fasadof36@gmail.com/);
   assert.match(html, /Бесплатная доставка по Воронежу/);
@@ -204,7 +205,7 @@ test("chat API switches to manager queue after operator request", async () => {
   );
   assert.equal(takeover.status, 200);
   const takeoverPayload = await takeover.json();
-  assert.equal(takeoverPayload.session.status, "WAITING_OPERATOR");
+  assert.equal(takeoverPayload.session.status, "WAITING_MANAGER");
 
   const after = await worker.fetch(
     new Request("http://localhost/api/chat", {
@@ -268,7 +269,6 @@ test(".env.example documents active production variables", async () => {
   const envExample = await readFile(new URL("../.env.example", import.meta.url), "utf8");
   for (const name of [
     "NEXT_PUBLIC_SITE_URL",
-    "NEXT_PUBLIC_CHAT2DESK_WIDGET_TOKEN",
     "ADMIN_EMAIL",
     "ADMIN_PASSWORD_HASH",
     "ADMIN_SESSION_SECRET",
@@ -542,7 +542,7 @@ test("support admin can take over and reply to a waiting conversation", async ()
     const cookie = login.headers.get("set-cookie") ?? "";
 
     const queue = await worker.fetch(
-      new Request("http://localhost/api/admin/conversations?status=WAITING_OPERATOR", { headers: { cookie } }),
+      new Request("http://localhost/api/admin/conversations?status=WAITING_MANAGER", { headers: { cookie } }),
       workerContext(),
       { waitUntil() {}, passThroughOnException() {} },
     );
@@ -564,6 +564,29 @@ test("support admin can take over and reply to a waiting conversation", async ()
       { waitUntil() {}, passThroughOnException() {} },
     );
     assert.equal(reply.status, 200);
+    const replyPayload = await reply.json();
+    assert.equal(replyPayload.session.canReply, true);
+
+    const repeatedTake = await worker.fetch(
+      new Request("http://localhost/api/admin/conversations", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie },
+        body: JSON.stringify({ action: "take", sessionId: firstPayload.session.id }),
+      }),
+      workerContext(),
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    assert.equal(repeatedTake.status, 200);
+
+    await worker.fetch(new Request("http://localhost/api/admin/products?status=all", { headers: { cookie } }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    const afterNavigation = await worker.fetch(new Request(`http://localhost/api/admin/conversations?sessionId=${firstPayload.session.id}`, { headers: { cookie } }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(afterNavigation.status, 200);
+    assert.equal((await afterNavigation.json()).session.canReply, true);
+
+    const relogin = await worker.fetch(new Request("http://localhost/api/admin/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "manager@example.com", password }) }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    const restored = await worker.fetch(new Request(`http://localhost/api/admin/conversations?sessionId=${firstPayload.session.id}`, { headers: { cookie: relogin.headers.get("set-cookie") ?? "" } }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(restored.status, 200);
+    assert.equal((await restored.json()).session.canReply, true);
 
     const customerPoll = await worker.fetch(
       new Request(`http://localhost/api/chat?sessionId=${firstPayload.session.id}&customerToken=${firstPayload.session.customerToken}`),
@@ -572,6 +595,8 @@ test("support admin can take over and reply to a waiting conversation", async ()
     );
     assert.equal(customerPoll.status, 200);
     const customerPayload = await customerPoll.json();
+    assert.equal(customerPayload.session.status, "IN_PROGRESS");
+    assert.equal(customerPayload.messages.filter((message) => /подключился к диалогу/.test(message.content)).length, 1);
     assert.ok(customerPayload.messages.some((message) => message.role === "operator" && /эмали/.test(message.content)));
   } finally {
     restore();
@@ -699,6 +724,19 @@ test("closed support dialog accepts one rating and exposes it to admin", async (
       { waitUntil() {}, passThroughOnException() {} },
     );
     assert.equal(closed.status, 200);
+    const closedPayload = await closed.json();
+    assert.equal(closedPayload.session.status, "CLOSED");
+    assert.equal(closedPayload.session.canReply, false);
+    assert.equal(closedPayload.session.canClose, false);
+
+    const customerAfterClose = await worker.fetch(
+      new Request(`http://localhost/api/chat?sessionId=${firstPayload.session.id}&customerToken=${firstPayload.session.customerToken}`),
+      workerContext(),
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    const customerAfterClosePayload = await customerAfterClose.json();
+    assert.equal(customerAfterClosePayload.session.status, "CLOSED");
+    assert.ok(customerAfterClosePayload.messages.some((message) => /Оцените консультацию/.test(message.content)));
 
     const rated = await worker.fetch(
       new Request("http://localhost/api/chat/rating", {
@@ -752,6 +790,112 @@ test("server-renders privacy route", async () => {
 
   const html = await response.text();
   assert.match(html, /Политика и согласие/);
+});
+
+test("admin-managed chat commands answer without code changes", async () => {
+  const password = "StrongPassword123";
+  const restore = installAdminEnv(password);
+  try {
+    const worker = await loadWorker("chat-commands");
+    const login = await worker.fetch(new Request("http://localhost/api/admin/login", { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.232" }, body: JSON.stringify({ email: "manager@example.com", password }) }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(login.status, 200);
+    const cookie = login.headers.get("set-cookie") ?? "";
+    const created = await worker.fetch(new Request("http://localhost/api/admin/chat-commands", { method: "POST", headers: { "content-type": "application/json", cookie }, body: JSON.stringify({ name: "Адрес", command: "/адрес", response: "Мы на улице Машиностроителей, 3.", enabled: true }) }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(created.status, 201);
+    const command = (await created.json()).commands.find((item) => item.command === "/адрес");
+    assert.ok(command);
+
+    const chat = await worker.fetch(new Request("http://localhost/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ message: "/адрес", page: "/" }) }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(chat.status, 200);
+    assert.equal((await chat.json()).reply, "Мы на улице Машиностроителей, 3.");
+
+    const disabled = await worker.fetch(new Request("http://localhost/api/admin/chat-commands", { method: "PATCH", headers: { "content-type": "application/json", cookie }, body: JSON.stringify({ ...command, enabled: false }) }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(disabled.status, 200);
+    const removed = await worker.fetch(new Request(`http://localhost/api/admin/chat-commands?id=${command.id}`, { method: "DELETE", headers: { cookie } }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(removed.status, 200);
+  } finally {
+    restore();
+  }
+});
+
+test("admin can clear, archive and delete a conversation", async () => {
+  const password = "StrongPassword123";
+  const restore = installAdminEnv(password);
+  try {
+    const worker = await loadWorker("chat-maintenance");
+    const chat = await worker.fetch(new Request("http://localhost/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ message: "Тестовый диалог", page: "/" }) }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    const session = (await chat.json()).session;
+    const login = await worker.fetch(new Request("http://localhost/api/admin/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "manager@example.com", password }) }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    const cookie = login.headers.get("set-cookie") ?? "";
+    const action = (name) => worker.fetch(new Request("http://localhost/api/admin/conversations", { method: "POST", headers: { "content-type": "application/json", cookie }, body: JSON.stringify({ action: name, sessionId: session.id }) }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal((await action("clear")).status, 200);
+    assert.deepEqual((await (await worker.fetch(new Request(`http://localhost/api/admin/conversations?sessionId=${session.id}`, { headers: { cookie } }), workerContext(), { waitUntil() {}, passThroughOnException() {} })).json()).messages, []);
+    assert.equal((await action("archive")).status, 200);
+    const active = await (await worker.fetch(new Request("http://localhost/api/admin/conversations", { headers: { cookie } }), workerContext(), { waitUntil() {}, passThroughOnException() {} })).json();
+    assert.equal(active.conversations.some((item) => item.id === session.id), false);
+    const archived = await (await worker.fetch(new Request("http://localhost/api/admin/conversations?archived=1", { headers: { cookie } }), workerContext(), { waitUntil() {}, passThroughOnException() {} })).json();
+    assert.equal(archived.conversations.some((item) => item.id === session.id), true);
+    assert.equal((await action("delete")).status, 200);
+    const afterDelete = await (await worker.fetch(new Request("http://localhost/api/admin/conversations?archived=1", { headers: { cookie } }), workerContext(), { waitUntil() {}, passThroughOnException() {} })).json();
+    assert.equal(afterDelete.conversations.some((item) => item.id === session.id), false);
+  } finally {
+    restore();
+  }
+});
+
+test("product image upload is served and removed after product edit", async () => {
+  const password = "StrongPassword123";
+  const restore = installAdminEnv(password);
+  try {
+    const worker = await loadWorker("product-image-pipeline");
+    const login = await worker.fetch(new Request("http://localhost/api/admin/login", { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.233" }, body: JSON.stringify({ email: "manager@example.com", password }) }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(login.status, 200);
+    const cookie = login.headers.get("set-cookie") ?? "";
+    const originalBytes = await readFile(join(process.cwd(), "public/images/hero/fasadof-scene-1983.webp"));
+    const galleryBytes = await readFile(join(process.cwd(), "public/images/hero/fasadof-scene-1280.webp"));
+    const form = new FormData();
+    form.append("images", new File([originalBytes], "качественный-фасад.webp", { type: "image/webp" }));
+    form.append("images", new File([galleryBytes], "галерея.webp", { type: "image/webp" }));
+    const upload = await worker.fetch(new Request("http://localhost/api/admin/product-images", { method: "POST", headers: { cookie }, body: form }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(upload.status, 201);
+    const uploadPayload = await upload.json();
+    assert.equal(uploadPayload.urls.length, 2);
+    const [imageUrl, galleryUrl] = uploadPayload.urls;
+    assert.equal(uploadPayload.url, imageUrl);
+    assert.match(imageUrl, /^\/api\/media\/products\/product-[a-f0-9]{24}\.webp$/);
+    const media = await worker.fetch(new Request(`http://localhost${imageUrl}`), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(media.status, 200);
+    assert.equal(media.headers.get("content-type"), "image/webp");
+    assert.deepEqual(Buffer.from(await media.arrayBuffer()), originalBytes);
+    const galleryMedia = await worker.fetch(new Request(`http://localhost${galleryUrl}`), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(galleryMedia.status, 200);
+    assert.deepEqual(Buffer.from(await galleryMedia.arrayBuffer()), galleryBytes);
+
+    const secondForm = new FormData();
+    secondForm.set("image", new File([originalBytes], "тот-же-файл.webp", { type: "image/webp" }));
+    const repeatedUpload = await worker.fetch(new Request("http://localhost/api/admin/product-images", { method: "POST", headers: { cookie }, body: secondForm }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(repeatedUpload.status, 201);
+    assert.equal((await repeatedUpload.json()).url, imageUrl);
+
+    const create = await worker.fetch(new Request("http://localhost/api/admin/products", { method: "POST", headers: { "content-type": "application/json", cookie }, body: JSON.stringify({ slug: "qa-upload", category: "facades", material: "QA", name: "QA upload", description: "Проверка загрузки", image: imageUrl, texture: "custom", gallery: [galleryUrl], features: [], status: "published" }) }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(create.status, 201);
+    const product = (await create.json()).product;
+    assert.equal(product.image, imageUrl);
+    assert.deepEqual(product.gallery, [galleryUrl]);
+    const catalogueHtml = await (await worker.fetch(new Request("http://localhost/catalog"), workerContext(), { waitUntil() {}, passThroughOnException() {} })).text();
+    assert.match(catalogueHtml, new RegExp(imageUrl.replaceAll("/", "\\/")));
+    const detailHtml = await (await worker.fetch(new Request("http://localhost/catalog/qa-upload"), workerContext(), { waitUntil() {}, passThroughOnException() {} })).text();
+    assert.match(detailHtml, new RegExp(imageUrl.replaceAll("/", "\\/")));
+    assert.match(detailHtml, new RegExp(galleryUrl.replaceAll("/", "\\/")));
+    const update = await worker.fetch(new Request("http://localhost/api/admin/products", { method: "PATCH", headers: { "content-type": "application/json", cookie }, body: JSON.stringify({ ...product, image: "texture-custom", gallery: [] }) }), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(update.status, 200);
+    const removed = await worker.fetch(new Request(`http://localhost${imageUrl}`), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(removed.status, 404);
+    const removedGallery = await worker.fetch(new Request(`http://localhost${galleryUrl}`), workerContext(), { waitUntil() {}, passThroughOnException() {} });
+    assert.equal(removedGallery.status, 404);
+  } finally {
+    restore();
+  }
 });
 
 test("MAX, VK callback and VK catalogue sync work without duplicates", async () => {
@@ -875,7 +1019,8 @@ test("MAX, VK callback and VK catalogue sync work without duplicates", async () 
     assert.equal(leadPayload.integration.maxNotified, true);
     assert.ok(leadPayload.integration.leadId > 0);
     const leadMessage = maxMessages.find((message) => /Новая заявка с сайта/.test(message.text));
-    assert.match(leadMessage.text, /Заявка #\d+/);
+    assert.doesNotMatch(leadMessage.text, /Заявка #\d+/);
+    assert.match(leadMessage.text, /👤 Клиент:/);
     assert.match(leadMessage.text, /lead@example\.com/);
     assert.match(leadMessage.text, /UTM: source=vk, medium=social, campaign=qa/);
     assert.equal(leadMessage.attachments[0].payload.buttons[0][0].url, "https://fasadof36.ru/admin/support");

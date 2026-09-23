@@ -2,9 +2,9 @@
 
 ## Public chat
 
-The production customer widget is Chat2Desk. Its public widget token remains client-side, while VK, MAX and admin secrets stay server-side.
+The production widget is owned by the project and uses `/api/chat`. Conversations and messages are stored in the same persistent database as the admin panel. No Chat2Desk scripts, tokens or sockets are used.
 
-The legacy `/api/chat` support flow uses only the local product knowledge base and does not call an external AI provider.
+The automatic responder uses only the local product knowledge base and does not call an external AI provider.
 
 ## Manager online status
 
@@ -12,7 +12,7 @@ The legacy `/api/chat` support flow uses only the local product knowledge base a
 
 ## "Позвать менеджера"
 
-When the customer requests a manager, the conversation status becomes `WAITING_OPERATOR`. The local automatic responder pauses while the request is fresh.
+When the customer requests a manager, the conversation status becomes `WAITING_MANAGER`. The local automatic responder pauses while the request is fresh.
 
 ## Waiting operator
 
@@ -20,11 +20,11 @@ The user can keep writing. Messages are saved in the same conversation and shown
 
 ## Local fallback
 
-If no manager replies before `MANAGER_WAIT_TIMEOUT_MS` (default 5 minutes), the server changes the conversation back to `AUTO` and appends a system message. No external AI service is used.
+If no manager replies before `MANAGER_WAIT_TIMEOUT_MS` (default 5 minutes), the server changes the conversation back to `NEW` and appends a system message. No external AI service is used.
 
 ## Manager takeover
 
-In `/admin/support`, the manager clicks `Взять диалог`. The status becomes `OPERATOR`; the automatic responder stays silent while the manager owns the dialog.
+In `/admin/support`, the manager clicks `Взять диалог`. The status becomes `IN_PROGRESS`; the automatic responder stays silent while the manager owns the dialog. Administrators can clear, archive or delete a dialog and manage command responses without changing code.
 
 ## Close conversation
 
@@ -32,11 +32,11 @@ The manager can close the conversation. Closed dialogs stay readable but the cus
 
 ## Working hours
 
-Working hours are displayed from `config/business.ts`: `ПН-ПТ 09:00-18:00`. Presence is not faked from working hours; it is based on heartbeat.
+Working hours are displayed from `config/business.ts`: `ПН-ПТ 09:00-17:00`. Presence is not faked from working hours; it is based on heartbeat.
 
 ## Presence
 
-Presence works in local memory during preview and uses D1/operator `updated_at` in production when the `DB` binding exists.
+Presence is persisted through operator `updated_at` on the VPS database. An active operator dialog is shown as busy; a recent heartbeat without an active dialog is online; otherwise the employee is offline.
 
 ## Timeout
 

@@ -89,6 +89,16 @@ export async function listLeads() {
   return (payload.results ?? []).map(mapLeadRow);
 }
 
+export async function getLead(id: number) {
+  const db = await getDatabase();
+  if (!db) return null;
+  await ensureLeadSchema(db);
+  const row = await db.prepare(
+    "SELECT id, name, phone, email, message, product, material, area, page, attribution, status, created_at FROM leads WHERE id = ? AND deleted_at IS NULL LIMIT 1",
+  ).bind(id).first<LeadRow>();
+  return row ? mapLeadRow(row) : null;
+}
+
 export async function updateLeadStatus(id: number, status: LeadStatus) {
   const db = await getDatabase();
   if (!db) return null;

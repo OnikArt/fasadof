@@ -6,10 +6,6 @@ Only variables read by production code or the production start wrapper are liste
 | --- | --- | --- | --- | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | Frontend/Sites/Vercel | Yes | No | Canonical URL and metadata base | `https://fasadof.ru` |
 | `NEXT_PUBLIC_YANDEX_METRIKA_ID` | Frontend/Sites/Vercel | No | No | Yandex Metrika counter id | `12345678` |
-| `NEXT_PUBLIC_CHAT2DESK_WIDGET_TOKEN` | Frontend/Sites/Vercel | Yes for chat | No | Public Chat2Desk widget token | from Chat2Desk widget settings |
-| `NEXT_PUBLIC_CHAT2DESK_URL` | Frontend/Sites/Vercel | No | No | Chat2Desk base URL override | `https://livechatv2.chat2desk.com` |
-| `NEXT_PUBLIC_CHAT2DESK_SOCKET_URL` | Frontend/Sites/Vercel | No | No | Chat2Desk WebSocket URL override | `wss://livechatv2.chat2desk.com/widget_ws_new` |
-| `NEXT_PUBLIC_CHAT2DESK_STATIC_DOMAIN` | Frontend/Sites/Vercel | No | No | Chat2Desk static files domain override | `https://storage.chat2desk.com/` |
 | `MANAGER_WAIT_TIMEOUT_MS` | Backend/VPS | No | No | Time before the local knowledge responder resumes after no manager reply | `300000` |
 | `VK_GROUP_ID` | Backend/VPS | Yes for VK | No | Numeric VK community id | `237489354` |
 | `VK_ACCESS_TOKEN` | Backend/VPS | Yes for VK | Yes | VK user token with Market permissions; community tokens fail on `market.get` | set on VPS only |
@@ -24,4 +20,4 @@ Only variables read by production code or the production start wrapper are liste
 | `FASADOF_DATA_DIR` | Backend/VPS | Yes | No | Persistent SQLite and media directory | `/var/lib/fasadof` |
 | `PORT` | Backend/VPS | No | No | Local Vinext port behind Nginx | `3000` |
 
-Only browser-readable values use `NEXT_PUBLIC_*`. VK, MAX and admin secrets are server-only.
+The first-party chat needs no third-party browser token. Only browser-readable values use `NEXT_PUBLIC_*`. VK, MAX and admin secrets are server-only.

@@ -34,6 +34,10 @@ export function isManagerAuthConfigured(env: ManagerAuthEnv) {
   return Boolean(env.ADMIN_EMAIL && env.ADMIN_PASSWORD_HASH && env.ADMIN_SESSION_SECRET);
 }
 
+export function isManagerSessionConfigured(env: ManagerAuthEnv) {
+  return Boolean(env.ADMIN_SESSION_SECRET && env.ADMIN_SESSION_SECRET.length >= 32);
+}
+
 export async function authenticateManager(email: string, password: string, env: ManagerAuthEnv) {
   const employee = await getEmployeeByEmail(email);
   if (employee) {
@@ -102,8 +106,8 @@ export async function getManagerFromCookieHeader(cookieHeader: string | null, en
   return verifyManagerSession(readCookie(cookieHeader, MANAGER_SESSION_COOKIE), env);
 }
 
-export function serializeSessionCookie(token: string, requestUrl: string) {
-  const secure = new URL(requestUrl).protocol === "https:";
+export function serializeSessionCookie(token: string, requestUrl: string, forwardedProto?: string | null) {
+  const secure = forwardedProto?.split(",")[0]?.trim() === "https" || new URL(requestUrl).protocol === "https:";
   return [
     `${MANAGER_SESSION_COOKIE}=${encodeURIComponent(token)}`,
     "Path=/",
@@ -114,8 +118,8 @@ export function serializeSessionCookie(token: string, requestUrl: string) {
   ].filter(Boolean).join("; ");
 }
 
-export function serializeClearedSessionCookie(requestUrl: string) {
-  const secure = new URL(requestUrl).protocol === "https:";
+export function serializeClearedSessionCookie(requestUrl: string, forwardedProto?: string | null) {
+  const secure = forwardedProto?.split(",")[0]?.trim() === "https" || new URL(requestUrl).protocol === "https:";
   return [
     `${MANAGER_SESSION_COOKIE}=`,
     "Path=/",

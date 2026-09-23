@@ -1,6 +1,6 @@
 # ФасадоФ
 
-Production site for the Russian brand «ФасадоФ»: furniture fronts, countertops, catalogue management, lead forms, Chat2Desk support, manager takeover, MAX notifications and safe VK Market synchronization.
+Production site for the Russian brand «ФасадоФ»: furniture fronts, countertops, catalogue management, lead forms, first-party support chat, manager takeover, MAX notifications and safe VK Market synchronization.
 
 ## Stack
 
@@ -12,12 +12,7 @@ Production site for the Russian brand «ФасадоФ»: furniture fronts, coun
 
 ## Local Start
 
-```bash
-npm install
-npm run dev
-```
-
-The local runner reads `.env` before starting vinext.
+See `docs/LOCAL_DEVELOPMENT.md` for dependencies, environment, migrations, first administrator and verification.
 
 ## Build And Preview
 
@@ -60,6 +55,7 @@ The script performs a fast-forward pull, clean `npm ci`, typecheck, safe migrati
 - `/catalog/:slug`
 - `/admin/login`
 - `/admin/support`
+- `/admin/leads/:id`
 - `/privacy`
 
 ## Main APIs
@@ -73,6 +69,7 @@ The script performs a fast-forward pull, clean `npm ci`, typecheck, safe migrati
 - `POST /api/admin/login`
 - `POST /api/admin/logout`
 - `GET/POST /api/admin/conversations`
+- `GET/POST/PATCH/DELETE /api/admin/chat-commands`
 - `GET/PATCH /api/admin/leads`
 
 ## Environment
@@ -81,7 +78,6 @@ Use `.env.example` as the template. Server secrets must not use `NEXT_PUBLIC_*`.
 
 Required production integrations:
 
-- Chat2Desk: `NEXT_PUBLIC_CHAT2DESK_WIDGET_TOKEN`;
 - Admin auth: `ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`;
 - VK: `VK_GROUP_ID`, `VK_ACCESS_TOKEN`, `VK_CALLBACK_SECRET`, `VK_CALLBACK_CONFIRMATION`;
 - MAX: `MAX_BOT_TOKEN`, `MAX_MANAGER_CHAT_ID`;
@@ -100,3 +96,6 @@ Required production integrations:
 - `docs/VERCEL_RAILWAY.md`
 - `docs/CONTENT_MANAGEMENT.md`
 - `docs/ANALYTICS_SETUP.md`
+- `docs/LOCAL_DEVELOPMENT.md`
+- `docs/DAILY_WORKFLOW.md`
+- `README_VPS.md`
