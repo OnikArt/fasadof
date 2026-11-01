@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "@/features/analytics/analytics";
 import { getAttribution } from "@/features/attribution/attribution";
 import { usePathname } from "next/navigation";
+import { BrandLogo } from "@/components/BrandLogo";
 
 type Message = { id: string; role: "user" | "assistant" | "operator" | "system"; content: string; authorName: string | null; createdAt: string };
 type Session = { id: string; customerToken: string; status: "NEW" | "WAITING_MANAGER" | "IN_PROGRESS" | "CLOSED"; operatorName: string | null };
@@ -116,12 +117,13 @@ export function SupportChat() {
     <div className="support-chat-root">
       {open && (
         <section className="support-chat-window" aria-label="Чат с ФасадоФ">
+          <aside className="chat-side-panel"><BrandLogo compact /><h2>ФасадоФ</h2><p>Мебельные материалы на заказ</p><ul><li><strong>Быстрые ответы</strong><span>Поможем подобрать материал и рассчитать стоимость</span></li><li><strong>Фото и чертежи</strong><span>Опишите задачу и пришлите детали менеджеру</span></li><li><strong>Консультация</strong><span>Подскажем по цветам, фактурам, срокам и доставке</span></li></ul></aside>
           <header>
             <div><strong>ФасадоФ</strong><span>{session?.operatorName ? `Вам отвечает: ${session.operatorName}` : managerOnline ? "Менеджер в сети" : "Помощник на связи"}</span></div>
             <button type="button" onClick={() => setOpen(false)} aria-label="Закрыть чат">×</button>
           </header>
           <div className="support-chat-messages" ref={listRef}>
-            {messages.length === 0 && <div className="chat-welcome"><strong>Добрый день!</strong><p>Поможем с выбором фасадов и столешниц. Напишите вопрос.</p></div>}
+            {messages.length === 0 && <div className="chat-welcome"><strong>Здравствуйте! 👋</strong><p>Поможем с выбором фасадов и столешниц. Чем можем помочь?</p><div className="chat-quick-actions">{["Рассчитать стоимость проекта", "Подобрать материал или цвет", "Узнать сроки и доставку", "Другое"].map((item) => <button type="button" key={item} disabled={loading} onClick={() => void action("message", item)}>{item}<span aria-hidden="true">›</span></button>)}</div></div>}
             {messages.map((item) => (
               <article className={`chat-message ${item.role}`} key={item.id}>
                 {(item.authorName || item.role === "assistant") && <small>{item.authorName || "Помощник"}</small>}

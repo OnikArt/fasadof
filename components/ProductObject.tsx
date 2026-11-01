@@ -9,13 +9,30 @@ export function ProductObject({
   size?: "default" | "large" | "compact";
   variant?: "module" | "slab" | "stack";
 }) {
-  const hasImage = product.image.startsWith("/") || product.image.startsWith("https://");
+  const fallbackImages: Record<string, string> = {
+    moonlite: "/images/products/pet-facades.jpg",
+    glass: "/images/products/glass-facades.jpg",
+    stone: "/images/products/dark-stone.jpg",
+    fenix: "/images/products/mdf-facades.jpg",
+    pet: "/images/products/pet-facades.jpg",
+    wood: "/images/products/walnut-veneer.jpg",
+    beton: "/images/products/concrete-facades.jpg",
+    veneer: "/images/products/walnut-veneer.jpg",
+    pvc: "/images/products/mdf-facades.jpg",
+    enamel: "/images/products/pet-facades.jpg",
+    compact: "/images/products/dark-stone.jpg",
+    dsp: "/images/products/walnut-veneer.jpg",
+    quartz: "/images/products/light-stone.jpg",
+  };
+  const imageUrl = product.image.startsWith("/") || product.image.startsWith("https://")
+    ? product.image
+    : fallbackImages[product.texture];
   return (
     <div className={`product-object ${product.texture} size-${size} ${variant}`} aria-label={product.name}>
       {/* Imported media has unknown dimensions and is served by the local media route. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {hasImage && <img className="product-object-image" src={product.image} alt={product.name} loading="lazy" decoding="async" />}
-      {!hasImage && <>
+      {imageUrl && <img className="product-object-image" src={imageUrl} alt={product.name} loading="lazy" decoding="async" />}
+      {!imageUrl && <>
       <div className="object-shadow" />
       <div className="object-board object-board-back" />
       <div className="object-board object-board-left" />

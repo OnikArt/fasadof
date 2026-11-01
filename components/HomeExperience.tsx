@@ -70,7 +70,7 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
             <div className="cover-hero-index" aria-hidden="true">01 / 09</div>
             <div className="cover-hero-copy">
               <p className="eyebrow">Мебельные материалы · Воронеж</p>
-              <h1><span>Фасады и столешницы </span><br />для мебели <span>на заказ</span></h1>
+              <h1>Фасады и<br />столешницы<br />для мебели <span>на заказ</span></h1>
               <p>Подберём материал, цвет и фактуру и рассчитаем стоимость проекта.</p>
               <div className="hero-actions">
                 <a className="btn primary" href="#order" onClick={() => analytics.track("cta_click", { place: "hero", action: "lead" })}>
@@ -79,14 +79,7 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
                 <a className="btn ghost" href="/catalog" onClick={() => analytics.track("catalog_open")}>Открыть каталог</a>
               </div>
             </div>
-            <div className="cover-hero-facts" aria-label="Доставка и график работы">
-              <strong>{BUSINESS.freeDelivery}</strong>
-              <span>ПН–ПТ · 09:00–17:00</span>
-              <a className="hero-showroom" href={BUSINESS.socials.yandexMaps} target="_blank" rel="noreferrer">
-                <span>Посмотреть материалы вживую</span>
-                <strong>Воронеж · ул. Машиностроителей, 3</strong>
-              </a>
-            </div>
+            <div className="cover-hero-facts" aria-label="Преимущества"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m12 2 8 4v6c0 5-3.4 8.3-8 10-4.6-1.7-8-5-8-10V6l8-4Z"/><path d="m8 12 3 3 5-6"/></svg><strong>Проверенные производители</strong></span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M2 5h12v11H2zM14 9h4l4 4v3h-8z"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg><strong>Доставка по всей России</strong></span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M12 3c-7 1-9 6-8 11 4 2 11 0 14-5l2-6c-3 0-6 0-8 0Z"/><path d="M6 20c3-6 7-10 12-13"/></svg><strong>Гарантия на материалы</strong></span></div>
             <p className="cover-hero-materials">Эмаль · шпон · массив · Fenix · камень</p>
           </div>
         </section>
@@ -244,10 +237,13 @@ export function HomeExperience({ products = seedProducts }: { products?: Product
           </div>
         </section>
 
-        <section className="delivery-section" id="delivery">
-          <div className="page-shell">
-            <span>Воронеж —</span>
-            <strong>доставка бесплатно.</strong>
+        <section className="delivery-section" id="delivery" aria-labelledby="delivery-title">
+          <div className="page-shell delivery-content">
+            <p className="eyebrow">Доставка</p>
+            <h2 id="delivery-title">Доставка материалов<br /><span>удобно и надёжно</span></h2>
+            <p className="delivery-intro">Бережно доставим ваши фасады и столешницы в оговорённые сроки. Контролируем каждый этап — от упаковки до передачи на объект.</p>
+            <div className="delivery-cards"><article><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2 5h12v11H2zM14 9h4l4 4v3h-8z"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></span><h3>По городу Воронеж <em>бесплатно</em></h3><p>Доставим в удобное для вас время. Подъём и разгрузка по согласованию.</p></article><article><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s7-6 7-12a7 7 0 1 0-14 0c0 6 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg></span><h3>В другие районы и регионы <em>индивидуально</em></h3><p>Стоимость и условия доставки рассчитываются индивидуально в зависимости от объёма, габаритов и расстояния.</p></article></div>
+            <div className="delivery-benefits"><span>Надёжная упаковка</span><span>Согласование времени</span><span>Контроль на всех этапах</span></div>
           </div>
         </section>
 

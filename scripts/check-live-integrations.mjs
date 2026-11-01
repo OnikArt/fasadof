@@ -29,7 +29,7 @@ async function checkMax(values, shouldSend) {
   const candidates = uniqueChatCandidates(updateItems);
 
   const delivery = shouldSend && me.ok
-    ? await sendMaxAcceptance(token, values.MAX_MANAGER_CHAT_ID?.trim())
+    ? await sendMaxAcceptance(token, values.MAX_CHAT_ID?.trim() || values.MAX_MANAGER_CHAT_ID?.trim())
     : { requested: shouldSend, result: "NOT_APPLICABLE", reason: shouldSend ? "MAX auth failed or chat ID is empty" : "Use --send-max for one explicit test delivery" };
   return {
     configured: true,
@@ -52,19 +52,19 @@ async function checkMax(values, shouldSend) {
       candidates,
       error: updates.ok ? null : updates.error,
     },
-    managerChatConfigured: Boolean(values.MAX_MANAGER_CHAT_ID?.trim()),
+    managerChatConfigured: Boolean(values.MAX_CHAT_ID?.trim() || values.MAX_MANAGER_CHAT_ID?.trim()),
     delivery,
   };
 }
 
 async function sendMaxAcceptance(token, chatId) {
-  if (!chatId) return { requested: true, result: "FAILED", reason: "MAX_MANAGER_CHAT_ID is empty" };
+  if (!chatId) return { requested: true, result: "FAILED", reason: "MAX_CHAT_ID is empty" };
   const url = new URL("https://platform-api2.max.ru/messages");
   url.searchParams.set("chat_id", chatId);
   const response = await requestJson(url, {
     method: "POST",
     headers: { authorization: token, "content-type": "application/json" },
-    body: JSON.stringify({ text: "✅ ФасадоФ: production-связь с MAX работает.", notify: true }),
+    body: JSON.stringify({ text: `Тест уведомлений ФасадоФ\n\nИсточник: Layero\nСтатус: интеграция MAX работает\nВремя: ${new Date().toISOString()}`, notify: true }),
   });
   const messageId = response.data?.message?.body?.mid ?? response.data?.message?.id ?? null;
   return { requested: true, result: response.ok ? "SUCCESS" : "FAILED", httpStatus: response.status, accepted: response.ok, messageId, error: response.error };

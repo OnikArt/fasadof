@@ -128,7 +128,7 @@ test("server-renders the full catalogue route", async () => {
   assert.equal(response.status, 200);
 
   const html = await response.text();
-  assert.match(html, /Все материалы ФасадоФ/);
+  assert.match(html, /Каталог фасадов/);
   assert.match(html, /Каталог материалов/);
   assert.match(html, /Эмаль матовая/);
 });
@@ -988,7 +988,7 @@ test("MAX, VK callback and VK catalogue sync work without duplicates", async () 
       { waitUntil() {}, passThroughOnException() {} },
     );
     assert.equal(maxTest.status, 200);
-    assert.match(maxMessages[0].text, /ФасадоФ: production-связь с MAX работает/);
+    assert.match(maxMessages[0].text, /Тест уведомлений ФасадоФ/);
 
     const lead = await worker.fetch(
       new Request("http://localhost/api/leads", {

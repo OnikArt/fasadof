@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { BUSINESS } from "@/config/business";
 import { analytics } from "@/features/analytics/analytics";
+import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/catalog", label: "Каталог" },
@@ -14,6 +15,7 @@ const navItems = [
 ];
 
 export function SiteHeader() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDialogElement | null>(null);
@@ -62,15 +64,16 @@ export function SiteHeader() {
         </a>
         <nav className="desktop-nav" aria-label="Основная навигация">
           {navItems.map((item) => (
-            <a href={item.href} key={item.href}>{item.label}</a>
+            <a href={item.href} key={item.href} aria-current={item.href === "/catalog" && pathname.startsWith("/catalog") ? "page" : undefined}>{item.label}</a>
           ))}
         </nav>
         <a className="header-phone" href={BUSINESS.phone.href} aria-label={`Позвонить в ФасадоФ: ${BUSINESS.phone.display}`}>
+          <svg className="header-phone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7.3 3.8 5.1 5.9c-.8.8-1.1 2-.7 3.1 1.8 5 5.6 8.8 10.6 10.6 1.1.4 2.3.1 3.1-.7l2.1-2.2-4.4-3.7-2 1.5c-1.8-.8-3.3-2.3-4.1-4.1l1.5-2-3.9-4.6Z" /></svg>
           <span className="header-phone-number">{BUSINESS.phone.display}</span>
           <span className="header-phone-short">Позвонить</span>
         </a>
         <a className="header-cta" href="/#order" onClick={() => analytics.track("cta_click", { place: "header", action: "lead" })}>
-          Рассчитать
+          Рассчитать проект
         </a>
         <button
           aria-controls="mobile-menu"

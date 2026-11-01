@@ -4,6 +4,7 @@ const MAX_API_URL = "https://platform-api2.max.ru";
 
 export type MaxBotEnv = {
   MAX_BOT_TOKEN?: string;
+  MAX_CHAT_ID?: string;
   MAX_MANAGER_CHAT_ID?: string;
 };
 
@@ -17,7 +18,7 @@ export class MaxBotClient {
 
   constructor(env: MaxBotEnv = process.env as MaxBotEnv) {
     this.token = env.MAX_BOT_TOKEN?.trim() ?? "";
-    this.chatId = env.MAX_MANAGER_CHAT_ID?.trim() ?? "";
+    this.chatId = env.MAX_CHAT_ID?.trim() || env.MAX_MANAGER_CHAT_ID?.trim() || "";
   }
 
   get configured() {
@@ -62,8 +63,10 @@ export class MaxBotClient {
         throw new IntegrationError(`HTTP_${response.status}`, `MAX: ${response.status === 401 || response.status === 403 ? "ошибка авторизации" : response.status === 400 || response.status === 404 ? "проверьте ID чата и доступ бота" : "API недоступен"} (HTTP ${response.status}).`);
       }
 
+      const payload = await response.json().catch(() => null) as { message?: { body?: { mid?: string }; id?: string } } | null;
+      if (!payload) throw new IntegrationError("INVALID_RESPONSE", "MAX: API вернул ответ не в формате JSON.");
       integrationLog("max", "/messages", started);
-      return response.json().catch(() => ({ ok: true }));
+      return payload;
     } catch (error) {
       integrationLog("max", "/messages", started, error);
       throw integrationError(error, "MAX");
