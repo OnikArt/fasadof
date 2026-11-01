@@ -3689,8 +3689,15 @@ p {
   font-family: var(--font-admin);
 }
 
+html:has(.support-admin) {
+  height: 100%;
+  overflow: hidden;
+}
+
 .admin-page:has(.support-admin) {
-  min-height: 100svh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: clip;
   padding-top: 0;
 }
 
@@ -3966,6 +3973,7 @@ p {
   max-height: calc(100svh - 170px);
   overflow: auto;
   scrollbar-width: none;
+  overscroll-behavior: contain;
 }
 
 .product-admin-filters {
@@ -5693,5 +5701,17 @@ p {
   .catalog-grid .card-footer span::after {
     content: "→";
     font-size: 18px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .product-admin-panel .product-admin-list {
+    max-height: min(52dvh, 600px);
+    overflow-y: auto;
+  }
+
+  .product-admin-panel .product-editor {
+    max-height: min(70dvh, 800px);
+    overflow-y: auto;
   }
 }
